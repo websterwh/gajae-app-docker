@@ -1,0 +1,14 @@
+# Local environment & secrets
+.env
+*.local
+
+# Runtime persistent directories
+data/
+workspace/
+gjc-config/
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

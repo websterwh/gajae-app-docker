@@ -1,0 +1,39 @@
+services:
+  gajae-app:
+    image: ghcr.io/websterwh/gajae-app-docker:latest
+    build: .
+    container_name: gajae-app
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-3001}:3001"
+    environment:
+      # Network and Admission
+      - HOST=0.0.0.0
+      - SERVER_PORT=3001
+      - GAJAE_ALLOW_UNAUTH_REMOTE=1
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
+      
+      # Storage and Data
+      - DATABASE_PATH=/data/auth.db
+      - WORKSPACES_ROOT=/workspace
+      - GJC_WORKER_AGENT_DIR=/root/.gjc/agent
+
+      # Dynamic In-Container Updates (No Pre-baked Versions)
+      # On first boot, container downloads the target version from GitHub.
+      # On subsequent boots or periodic interval, checks for updates automatically.
+      - AUTO_UPDATE=${AUTO_UPDATE:-true}
+      - UPDATE_INTERVAL=${UPDATE_INTERVAL:-0} # In seconds: 0 = on startup; 21600 = every 6h
+      - UPSTREAM_REPO=${UPSTREAM_REPO:-devswha/gajae-code-app}
+      - VERSION=${VERSION:-latest}
+
+      # Optional AI Provider API Keys (or configure them in the web settings)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    volumes:
+      # Persistent app data (auth.db, sessions, logs)
+      - ./data:/data
+      # Workspace directory containing projects for GJC agent
+      - ${HOST_WORKSPACE_DIR:-./workspace}:/workspace
+      # Persistent GJC agent configuration and credentials
+      - ./gjc-config:/root/.gjc
