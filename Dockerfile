@@ -1,11 +1,15 @@
 FROM node:22-bookworm-slim
 
 LABEL org.opencontainers.image.title="Gajae Code App" \
-      org.opencontainers.image.description="Dynamic runtime container for Gajae Code App with automatic self-updating" \
+      org.opencontainers.image.description="Dynamic runtime container for Gajae Code App with automatic self-updating, SSH, and package provisioning" \
       org.opencontainers.image.source="https://github.com/websterwh/gajae-app-docker" \
       org.opencontainers.image.licenses="MIT"
 
-# Install system dependencies required by GJC coding agent and developer tools
+# Install system dependencies:
+# - build / archive tools & utilities
+# - android-tools-adb for device control
+# - openssh-server for container SSH access
+# - Playwright / Chromium headless rendering dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -17,7 +21,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gzip \
     unzip \
     jq \
+    android-tools-adb \
+    openssh-server \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libasound2 \
     && rm -rf /var/lib/apt/lists/*
+
+# Install uv & uvx (fast Python package / tool runner)
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
+    chmod 0755 /usr/local/bin/uv /usr/local/bin/uvx 2>/dev/null || true
+
+# Install aqua (CLI package manager for GitHub releases) directly from GitHub release
+RUN curl -sSfL https://github.com/aquaproj/aqua/releases/download/v2.66.0/aqua_linux_amd64.tar.gz | tar -xz -C /usr/local/bin aqua && \
+    chmod 0755 /usr/local/bin/aqua
+
+# Configure Git system-wide to trust all mounted directories
+RUN git config --system --add safe.directory '*'
 
 WORKDIR /app
 
@@ -30,10 +61,15 @@ RUN printf '#!/bin/sh\nexec node /app/dist-server/server/cli.js "$@"\n' > /usr/l
     chmod 0755 /usr/local/bin/gajae-app
 
 # Create default mount points for persistence
-RUN mkdir -p /data /workspace /root/.gjc /app
+RUN mkdir -p /data /data/bin /workspace /root/.gjc /app /var/run/sshd
 
 # Default environment configuration
-ENV HOST=0.0.0.0 \
+ENV PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH" \
+    UV_CACHE_DIR="/data/cache/uv" \
+    PIP_CACHE_DIR="/data/cache/pip" \
+    AQUA_ROOT_DIR="/data/aqua" \
+    NPM_CONFIG_CACHE="/data/cache/npm" \
+    HOST=0.0.0.0 \
     SERVER_PORT=3001 \
     GAJAE_ALLOW_UNAUTH_REMOTE=1 \
     ALLOWED_HOSTS=* \
@@ -44,9 +80,20 @@ ENV HOST=0.0.0.0 \
     UPDATE_INTERVAL=0 \
     UPSTREAM_REPO=devswha/gajae-code-app \
     VERSION=latest \
-    NODE_ENV=production
+    NODE_ENV=production \
+    AUTO_UPDATE_PACKAGES=true \
+    CHECK_PACKAGE_UPDATES=true \
+    PACKAGE_UPDATE_INTERVAL=0 \
+    INSTALL_GJC_CLI=true \
+    SSH_ENABLE=false \
+    SSH_PORT=2222 \
+    SSH_ALLOW_PASSWORD=false \
+    SSH_PASSWORD="" \
+    SSH_PUBLIC_KEYS="" \
+    SSH_NO_AUTH=false \
+    SSH_DEFAULT_COMMAND=gjc
 
-EXPOSE 3001
+EXPOSE 3001 2222
 
 VOLUME ["/data", "/workspace", "/root/.gjc"]
 

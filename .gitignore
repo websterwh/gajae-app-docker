@@ -12,3 +12,5 @@ gjc-config/
 Thumbs.db
 .idea/
 .vscode/
+.serena/
+.gjc/

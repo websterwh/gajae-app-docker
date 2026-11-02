@@ -1,17 +1,22 @@
 # Gajae Code App Docker
 
-Official Docker packaging for **Gajae Code App** (`gajae-app`), featuring **dynamic runtime release pulling and automated in-container self-updates**.
+Official Docker packaging for **Gajae Code App** (`gajae-app`), featuring **dynamic runtime release pulling, automated in-container self-updates, universal package provisioning (APT/UV/Pip/Aqua), Android ADB auto-connect, and direct SSH CLI access**.
 
 ---
 
 ## Highlights
 
-- 🚀 **Zero Pre-baked Versions**: The Docker image is a lightweight, pure runtime environment (Node 22, Bun, Git, Python 3). No application versions are hardcoded or pre-baked into the image layers.
-- 📥 **Pulls Latest at First Boot**: When you launch the container, it automatically queries GitHub for the latest release, downloads the server bundle, verifies the SHA256 checksum, and launches it.
-- 🔄 **Automatic Updates**: On every subsequent restart (and optionally periodically while running via `UPDATE_INTERVAL`), the container checks GitHub for new releases. If an update is detected, it downloads and hot-restarts in-place.
-- ⚙️ **Configurable**: Easily override any setting using standard Docker environment variables (`.env`).
-- 💾 **Persistent Data**: Separate volumes for application database, agent credentials, and coding workspaces.
-- 🛡️ **Secure by Default**: Never requires mounting `/var/run/docker.sock`.
+- 🚀 **Zero Pre-baked Versions**: The Docker image is a pure, clean runtime environment. Upstream code is downloaded directly on first boot, eliminating rebuild lag.
+- 🔄 **In-Container Auto-Updates**: On startup and periodically in the background, checks GitHub for new Gajae Code releases and performs zero-downtime hot restarts.
+- 📦 **Universal Addon Package Provisioning**:
+  - `APT_PACKAGES`: Comma-separated Debian packages (e.g. `openjdk-17-jre-headless,ffmpeg`).
+  - `UV_TOOLS`: Standalone Python CLI tools / MCP servers (e.g. `serena,canvas-mcp-server`).
+  - `PIP_PACKAGES`: Global Python packages via `uv pip install --system`.
+  - `GITHUB_APPS`: GitHub release CLI binaries via Aqua (e.g. `skylot/jadx,iBotPeaches/Apktool`).
+- ⚡ **Persistent Disk Caching**: APT archives, UV tools, Pip wheels, Aqua downloads, and NPM caches are rooted in `/data/cache/` for instant, cached boots.
+- 📱 **Android ADB Auto-Connect**: Automatically connects to Wi-Fi/network ADB devices on container boot (`ADB_CONNECT=192.168.1.79:5555`).
+- 💻 **Direct Container SSH Access**: In-container SSH daemon (`SSH_ENABLE=true`, port `2222`) that can drop you straight into an interactive `gjc` coding session. Supports keyless/passwordless (`SSH_NO_AUTH=true`), passwords, or SSH public keys.
+- 🛡️ **Zero Host Docker Socket Dependency**: Never mounts `/var/run/docker.sock`.
 
 ---
 
@@ -25,108 +30,79 @@ Official Docker packaging for **Gajae Code App** (`gajae-app`), featuring **dyna
    cd gajae-app-docker
    ```
 
-2. (Optional) Customize environment variables:
+2. Configure environment variables:
    ```bash
    cp .env.example .env
-   # Edit .env to adjust port, workspace directory, or API keys
+   # Edit .env to customize packages, SSH, or port mappings
    ```
 
-3. Start the application:
+3. Start the container:
    ```bash
    docker compose up -d
    ```
 
-4. Open the Web UI:
+4. Access the Web UI:
    Navigate to **`http://localhost:3001`** in your browser.
 
----
-
-### 2. Using `docker run` Directly
-
-```bash
-docker run -d \
-  --name gajae-app \
-  --restart unless-stopped \
-  -p 3001:3001 \
-  -e HOST=0.0.0.0 \
-  -e SERVER_PORT=3001 \
-  -e GAJAE_ALLOW_UNAUTH_REMOTE=1 \
-  -e ALLOWED_HOSTS=* \
-  -e AUTO_UPDATE=true \
-  -v ./data:/data \
-  -v ./workspace:/workspace \
-  -v ./gjc-config:/root/.gjc \
-  ghcr.io/websterwh/gajae-app-docker:latest
-```
+5. (Optional) Connect via SSH directly to GJC CLI:
+   If `SSH_ENABLE=true` and `SSH_PORT=2222`:
+   ```bash
+   ssh -p 2222 root@localhost
+   ```
 
 ---
 
-## How In-Container Updates Work
+## Environment Variables Specification
 
-```
-[ Container First Boot ]
-          │
-          ▼
-[ Check GitHub API (devswha/gajae-code-app) ]
-          │
-          ├─► Download latest release tarball & .sha256
-          ├─► Verify SHA256 checksum
-          ├─► Extract into /app
-          └─► Launch Gajae Code App (0.0.0.0:3001)
-
-[ Subsequent Boots / Background Checks ]
-          │
-          ▼
-[ Compare Local Version vs Remote Release ]
-          │
-    ┌─────┴─────┐
-    ▼           ▼
-[ Matches ] [ Newer Release Found ]
-    │           │
-    │           ├─► Download & verify checksum
-    │           ├─► Extract new version
-    │           └─► Hot-restart server in container
-    ▼
-[ Continue Serving ]
-```
-
-- **Startup Check (`AUTO_UPDATE=true`, Default)**: Checks GitHub on boot; skips download if already up to date.
-- **Fail-Safe Offline Mode**: If GitHub is unreachable (offline/rate-limited), it gracefully boots the existing installed version without crashing.
-- **Periodic Background Updates (`UPDATE_INTERVAL`)**: Set `UPDATE_INTERVAL=21600` (every 6 hours) or `86400` (daily). While running, a background worker checks for updates and reloads the server process automatically.
-- **Version Pinning**: To freeze a specific version rather than latest:
-  ```env
-  VERSION=v2.0.0-beta.20
-  AUTO_UPDATE=false
-  ```
-
----
-
-## Environment Variables
-
-| Variable | Default in Container | Description |
+### Core App & Network
+| Variable | Default | Description |
 |---|---|---|
-| `AUTO_UPDATE` | `true` | Check GitHub for new releases on container start. |
-| `UPDATE_INTERVAL` | `0` | Seconds between background update checks (0 = on startup only; e.g. `21600` for every 6h). |
-| `VERSION` | `latest` | Upstream version tag to target (`latest` or specific tag like `v2.0.0-beta.20`). |
-| `UPSTREAM_REPO` | `devswha/gajae-code-app` | GitHub repository to track for releases. |
-| `SERVER_PORT` | `3001` | Port the internal server listens on. |
 | `HOST` | `0.0.0.0` | Bind IP inside container (`0.0.0.0` required for container port mapping). |
+| `SERVER_PORT` | `3001` | Port the internal WebUI server listens on. |
 | `GAJAE_ALLOW_UNAUTH_REMOTE` | `1` | Permits binding to `0.0.0.0` across network interfaces. |
-| `ALLOWED_HOSTS` | `*` | Admitted hostnames/origins. Use `*` to allow all, or specify comma-separated domains. |
+| `ALLOWED_HOSTS` | `*` | Admitted hostnames/origins (`*` allows all, or enter comma-separated domains). |
 | `DATABASE_PATH` | `/data/auth.db` | Path to persistent SQLite database. |
 | `WORKSPACES_ROOT` | `/workspace` | Default directory root for GJC agent projects. |
 | `GJC_WORKER_AGENT_DIR` | `/root/.gjc/agent` | Storage directory for agent sessions and custom skills. |
-| `ANTHROPIC_API_KEY` | *(empty)* | Optional Anthropic API key. |
-| `OPENAI_API_KEY` | *(empty)* | Optional OpenAI API key. |
-| `GEMINI_API_KEY` | *(empty)* | Optional Google Gemini API key. |
+| `AUTO_UPDATE` | `true` | Check GitHub for new Gajae Code releases on container start. |
+| `UPDATE_INTERVAL` | `0` | Seconds between background app update checks (0 = on startup only; e.g. `21600` for every 6h). |
+| `VERSION` | `latest` | Upstream version tag to target (`latest` or specific tag like `v2.0.0-beta.20`). |
+
+### Universal Package Provisioning
+| Variable | Default | Description |
+|---|---|---|
+| `APT_PACKAGES` | *(empty)* | Comma-separated Debian packages to install via APT (`openjdk-17-jre-headless,ffmpeg`). |
+| `UV_TOOLS` | *(empty)* | Comma-separated isolated Python CLI tools / MCPs via `uv tool install` (`serena`). |
+| `PIP_PACKAGES` | *(empty)* | Comma-separated Python packages installed globally via `uv pip install --system`. |
+| `GITHUB_APPS` | *(empty)* | Comma-separated GitHub release apps installed via Aqua (`skylot/jadx,iBotPeaches/Apktool`). |
+| `AUTO_UPDATE_PACKAGES` | `true` | Automatically upgrade all installed packages on container boot. |
+| `CHECK_PACKAGE_UPDATES` | `true` | Check and log available package updates. |
+| `PACKAGE_UPDATE_INTERVAL` | `0` | Seconds between periodic background package update checks while running. |
+
+### Android ADB
+| Variable | Default | Description |
+|---|---|---|
+| `ADB_CONNECT` | *(empty)* | Comma-separated IP:port endpoints to automatically connect to on container boot (`192.168.1.79:5555`). |
+
+### Direct SSH & GJC CLI Access
+| Variable | Default | Description |
+|---|---|---|
+| `SSH_ENABLE` | `false` | Enable the in-container SSH daemon. |
+| `SSH_PORT` | `2222` | Internal listening port for the container SSH daemon. |
+| `SSH_ALLOW_PASSWORD`| `false` | Allow password authentication for SSH. |
+| `SSH_PASSWORD` | *(empty)* | Root password for SSH if password authentication is enabled. |
+| `SSH_PUBLIC_KEYS` | *(empty)* | Public key(s) or URL (https://...) to authorize for SSH. |
+| `SSH_NO_AUTH` | `false` | Permit passwordless/keyless direct SSH login (for trusted private networks). |
+| `SSH_DEFAULT_COMMAND`| `gjc` | Default command executed on interactive login: `gjc` (interactive agent) or `bash`. |
+| `INSTALL_GJC_CLI` | `true` | Create standalone launcher at `/data/bin/gjc`. |
 
 ---
 
-## Directory & Volume Structure
+## Storage & Volume Layout
 
 | Container Path | Host Path (Compose) | Purpose |
 |---|---|---|
-| `/data` | `./data` | Application database (`auth.db`), logs, and server state. |
+| `/data` | `./data` | Persistent SQLite database (`auth.db`), logs, caches (`apt`, `uv`, `pip`, `aqua`, `npm`), host SSH keys, and installed CLI binaries (`/data/bin`). |
 | `/workspace` | `./workspace` | Projects directory where the coding agent inspects and edits code. |
 | `/root/.gjc` | `./gjc-config` | Agent configurations, credentials, and custom skills. |
 
