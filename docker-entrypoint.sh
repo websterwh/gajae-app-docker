@@ -70,9 +70,6 @@ if [ -f "/app/dist-native/bun" ] && [ ! -f "/usr/local/bin/bun" ]; then
     ln -sf /app/dist-native/bun /usr/local/bin/bun
     chmod +x /usr/local/bin/bun 2>/dev/null || true
 fi
-
-# Ensure /app/.env exists so load-env.js doesn't log ENOENT when env vars come from container
-touch /app/.env
 # ==============================================================================
 # Helper: Comma-separated Parser
 # ==============================================================================
