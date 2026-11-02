@@ -50,10 +50,10 @@ RUN git config --system --add safe.directory '*'
 
 WORKDIR /app
 
-# Copy installation & update script
+# Copy installation & update scripts
 COPY scripts/install-release.sh /usr/local/bin/install-release
-RUN chmod +x /usr/local/bin/install-release
-
+COPY scripts/install-github-app.py /usr/local/bin/install-github-app
+RUN chmod +x /usr/local/bin/install-release /usr/local/bin/install-github-app
 # Install global CLI wrapper for convenience
 RUN printf '#!/bin/sh\nexec node /app/dist-server/server/cli.js "$@"\n' > /usr/local/bin/gajae-app && \
     chmod 0755 /usr/local/bin/gajae-app
@@ -65,6 +65,7 @@ RUN mkdir -p /data /data/bin /workspace /root/.gjc /app /var/run/sshd
 ENV PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH" \
     UV_CACHE_DIR="/data/cache/uv" \
     PIP_CACHE_DIR="/data/cache/pip" \
+    UV_LINK_MODE="copy" \
     AQUA_ROOT_DIR="/data/aqua" \
     NPM_CONFIG_CACHE="/data/cache/npm" \
     HOST=0.0.0.0 \

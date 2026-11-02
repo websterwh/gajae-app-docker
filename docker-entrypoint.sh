@@ -38,9 +38,9 @@ export INSTALL_GJC_CLI="${INSTALL_GJC_CLI:-true}"
 export PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH"
 export UV_CACHE_DIR="/data/cache/uv"
 export PIP_CACHE_DIR="/data/cache/pip"
+export UV_LINK_MODE="copy"
 export AQUA_ROOT_DIR="/data/aqua"
 export NPM_CONFIG_CACHE="/data/cache/npm"
-
 # ==============================================================================
 # Directory & Cache Preparation
 # ==============================================================================
@@ -71,6 +71,8 @@ if [ -f "/app/dist-native/bun" ] && [ ! -f "/usr/local/bin/bun" ]; then
     chmod +x /usr/local/bin/bun 2>/dev/null || true
 fi
 
+# Ensure /app/.env exists so load-env.js doesn't log ENOENT when env vars come from container
+touch /app/.env
 # ==============================================================================
 # Helper: Comma-separated Parser
 # ==============================================================================
@@ -167,39 +169,11 @@ provision_aqua() {
         return 0
     fi
 
-    mkdir -p /data/aqua
-    local aqua_yaml="/data/aqua/aqua.yaml"
-
-    echo "==> [Aqua] Generating ${aqua_yaml} for GITHUB_APPS..."
-    cat > "$aqua_yaml" <<'EOF'
----
-registries:
-  - type: standard
-    ref: v4.325.0
-packages:
-EOF
-
+    mkdir -p /data/aqua /data/bin /data/share
     while IFS= read -r app; do
-        cat >> "$aqua_yaml" <<EOF
-  - name: ${app}
-EOF
+        [ -z "$app" ] && continue
+        /usr/local/bin/install-github-app "${app}" || true
     done < <(parse_csv "${GITHUB_APPS}")
-
-    echo "==> [Aqua] Installing GitHub apps..."
-    AQUA_ROOT_DIR="/data/aqua" aqua install -l -a -c "$aqua_yaml" >/dev/null 2>&1 || true
-
-    # Link aqua binaries into /data/bin
-    if [ -d "/data/aqua/bin" ]; then
-        for b in /data/aqua/bin/*; do
-            [ -e "$b" ] || continue
-            ln -sf "$b" "/data/bin/$(basename "$b")"
-        done
-    fi
-
-    if [ "${AUTO_UPDATE_PACKAGES}" = "true" ] || [ "${AUTO_UPDATE_PACKAGES}" = "1" ]; then
-        echo "==> [Aqua] Checking/updating GitHub apps..."
-        AQUA_ROOT_DIR="/data/aqua" aqua update-all -l -c "$aqua_yaml" >/dev/null 2>&1 || true
-    fi
 }
 
 # ==============================================================================
