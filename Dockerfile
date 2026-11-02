@@ -7,7 +7,6 @@ LABEL org.opencontainers.image.title="Gajae Code App" \
 
 # Install system dependencies:
 # - build / archive tools & utilities
-# - android-tools-adb for device control
 # - openssh-server for container SSH access
 # - Playwright / Chromium headless rendering dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -21,7 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gzip \
     unzip \
     jq \
-    android-tools-adb \
     openssh-server \
     libnss3 \
     libatk1.0-0 \
@@ -83,7 +81,7 @@ ENV PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH" \
     NODE_ENV=production \
     AUTO_UPDATE_PACKAGES=true \
     CHECK_PACKAGE_UPDATES=true \
-    PACKAGE_UPDATE_INTERVAL=0 \
+    POST_COMMANDS="" \
     INSTALL_GJC_CLI=true \
     SSH_ENABLE=false \
     SSH_PORT=2222 \

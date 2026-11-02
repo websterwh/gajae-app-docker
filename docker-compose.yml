@@ -32,11 +32,7 @@ services:
       - GITHUB_APPS=${GITHUB_APPS:-}
       - AUTO_UPDATE_PACKAGES=${AUTO_UPDATE_PACKAGES:-true}
       - CHECK_PACKAGE_UPDATES=${CHECK_PACKAGE_UPDATES:-true}
-      - PACKAGE_UPDATE_INTERVAL=${PACKAGE_UPDATE_INTERVAL:-0}
-
-      # Android ADB Auto-Connect
-      - ADB_CONNECT=${ADB_CONNECT:-}
-
+      - POST_COMMANDS=${POST_COMMANDS:-}
       # Direct Container SSH & CLI Access
       - SSH_ENABLE=${SSH_ENABLE:-false}
       - SSH_PORT=${SSH_PORT:-2222}

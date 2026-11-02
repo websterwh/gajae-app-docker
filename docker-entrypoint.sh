@@ -23,11 +23,7 @@ export PIP_PACKAGES="${PIP_PACKAGES:-}"
 export GITHUB_APPS="${GITHUB_APPS:-}"
 export AUTO_UPDATE_PACKAGES="${AUTO_UPDATE_PACKAGES:-true}"
 export CHECK_PACKAGE_UPDATES="${CHECK_PACKAGE_UPDATES:-true}"
-export PACKAGE_UPDATE_INTERVAL="${PACKAGE_UPDATE_INTERVAL:-0}"
-
-# ADB Configuration
-export ADB_CONNECT="${ADB_CONNECT:-}"
-
+export POST_COMMANDS="${POST_COMMANDS:-}"
 # SSH Configuration
 export SSH_ENABLE="${SSH_ENABLE:-false}"
 export SSH_PORT="${SSH_PORT:-2222}"
@@ -222,16 +218,12 @@ EOF
 }
 
 # ==============================================================================
-# Android ADB Auto-Connect
+# Post Commands Execution
 # ==============================================================================
-setup_adb() {
-    if [ -n "${ADB_CONNECT}" ]; then
-        echo "==> [ADB] Starting ADB server..."
-        adb start-server || true
-        while IFS= read -r endpoint; do
-            echo "==> [ADB] Connecting to ${endpoint}..."
-            adb connect "$endpoint" || true
-        done < <(parse_csv "${ADB_CONNECT}")
+run_post_commands() {
+    if [ -n "${POST_COMMANDS}" ]; then
+        echo "==> [Post Commands] Executing custom post commands..."
+        eval "${POST_COMMANDS}" || true
     fi
 }
 
@@ -318,23 +310,31 @@ EOF
         chmod 600 /root/.ssh/authorized_keys
     fi
 
-    # Set default command or login landing behavior
-    if [ "${SSH_DEFAULT_COMMAND}" = "gjc" ]; then
-        # Add interactive gjc launch to bashrc for interactive SSH logins
-        if ! grep -q "LAUNCH_GJC_ON_LOGIN" /root/.bashrc 2>/dev/null; then
-            cat >> /root/.bashrc <<'EOF'
+    # Configure interactive shell landing in WORKSPACES_ROOT and default command
+    # Also set /workspace as home or cd on login
+    cat > /root/.bash_profile <<EOF
+if [ -f /root/.bashrc ]; then
+    . /root/.bashrc
+fi
+if [ -d "${WORKSPACES_ROOT}" ]; then
+    cd "${WORKSPACES_ROOT}" 2>/dev/null || true
+fi
+EOF
 
-# Auto-launch GJC CLI on interactive SSH login
-if [ -n "$SSH_CONNECTION" ] && [ -t 1 ]; then
+    cat > /root/.bashrc <<EOF
+# Set shell working directory to WORKSPACES_ROOT
+if [ -d "${WORKSPACES_ROOT}" ]; then
+    cd "${WORKSPACES_ROOT}" 2>/dev/null || true
+fi
+
+# Auto-launch GJC CLI on interactive SSH login if SSH_DEFAULT_COMMAND=gjc
+if [ "\${SSH_DEFAULT_COMMAND:-gjc}" = "gjc" ] && [ -n "\$SSH_CONNECTION" ] && [ -t 1 ]; then
     export LAUNCH_GJC_ON_LOGIN=1
     if [ -x /data/bin/gjc ]; then
         exec /data/bin/gjc
     fi
 fi
 EOF
-        fi
-    fi
-
     # Start sshd in background
     /usr/sbin/sshd
     echo "==> [SSH] SSH daemon running on port ${SSH_PORT}."
@@ -347,7 +347,7 @@ provision_apt
 provision_uv_pip
 provision_aqua
 provision_gjc_cli
-setup_adb
+run_post_commands
 setup_ssh
 
 # ==============================================================================
@@ -392,14 +392,20 @@ shutdown_handler() {
 
 trap shutdown_handler SIGTERM SIGINT SIGQUIT
 
-# Periodic background app update loop
+# Periodic background combined update loop (App + Addon Packages)
 if [ "${AUTO_UPDATE}" = "true" ] || [ "${AUTO_UPDATE}" = "1" ]; then
     if [ "${UPDATE_INTERVAL}" -gt 0 ] 2>/dev/null; then
-        echo "==> [Auto-Update] Periodic app update check enabled (every ${UPDATE_INTERVAL}s)."
+        echo "==> [Auto-Update] Periodic update check enabled (every ${UPDATE_INTERVAL}s)."
         (
             while true; do
                 sleep "${UPDATE_INTERVAL}"
-                echo "==> [Auto-Update] Running scheduled app update check..."
+                echo "==> [Auto-Update] Running scheduled update check..."
+                # Check and update packages
+                provision_apt || true
+                provision_uv_pip || true
+                provision_aqua || true
+
+                # Check and update Gajae Code App
                 OLD_VER="$(cat /app/.installed_version 2>/dev/null || true)"
                 /usr/local/bin/install-release "${UPSTREAM_REPO}" "${VERSION}" /app || true
                 NEW_VER="$(cat /app/.installed_version 2>/dev/null || true)"
@@ -414,21 +420,6 @@ if [ "${AUTO_UPDATE}" = "true" ] || [ "${AUTO_UPDATE}" = "1" ]; then
         ) &
     fi
 fi
-
-# Periodic background package update loop
-if [ "${PACKAGE_UPDATE_INTERVAL}" -gt 0 ] 2>/dev/null; then
-    echo "==> [Auto-Update] Periodic package update check enabled (every ${PACKAGE_UPDATE_INTERVAL}s)."
-    (
-        while true; do
-            sleep "${PACKAGE_UPDATE_INTERVAL}"
-            echo "==> [Auto-Update] Running scheduled package update check..."
-            provision_apt || true
-            provision_uv_pip || true
-            provision_aqua || true
-        done
-    ) &
-fi
-
 # Supervisor loop
 while true; do
     node /app/dist-server/server/cli.js start &

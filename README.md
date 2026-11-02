@@ -14,8 +14,7 @@ Official Docker packaging for **Gajae Code App** (`gajae-app`), featuring **dyna
   - `PIP_PACKAGES`: Global Python packages via `uv pip install --system`.
   - `GITHUB_APPS`: GitHub release CLI binaries via Aqua (e.g. `skylot/jadx,iBotPeaches/Apktool`).
 - ⚡ **Persistent Disk Caching**: APT archives, UV tools, Pip wheels, Aqua downloads, and NPM caches are rooted in `/data/cache/` for instant, cached boots.
-- 📱 **Android ADB Auto-Connect**: Automatically connects to Wi-Fi/network ADB devices on container boot (`ADB_CONNECT=192.168.1.79:5555`).
-- 💻 **Direct Container SSH Access**: In-container SSH daemon (`SSH_ENABLE=true`, port `2222`) that can drop you straight into an interactive `gjc` coding session. Supports keyless/passwordless (`SSH_NO_AUTH=true`), passwords, or SSH public keys.
+- 💻 **Direct Container SSH Access**: In-container SSH daemon (`SSH_ENABLE=true`, port `2222`) that opens into the workspace root (`/workspace`) by default, and can drop you straight into an interactive `gjc` coding session. Supports keyless/passwordless (`SSH_NO_AUTH=true`), passwords, or SSH public keys.
 - 🛡️ **Zero Host Docker Socket Dependency**: Never mounts `/var/run/docker.sock`.
 
 ---
@@ -77,13 +76,7 @@ Official Docker packaging for **Gajae Code App** (`gajae-app`), featuring **dyna
 | `GITHUB_APPS` | *(empty)* | Comma-separated GitHub release apps installed via Aqua (`skylot/jadx,iBotPeaches/Apktool`). |
 | `AUTO_UPDATE_PACKAGES` | `true` | Automatically upgrade all installed packages on container boot. |
 | `CHECK_PACKAGE_UPDATES` | `true` | Check and log available package updates. |
-| `PACKAGE_UPDATE_INTERVAL` | `0` | Seconds between periodic background package update checks while running. |
-
-### Android ADB
-| Variable | Default | Description |
-|---|---|---|
-| `ADB_CONNECT` | *(empty)* | Comma-separated IP:port endpoints to automatically connect to on container boot (`192.168.1.79:5555`). |
-
+| `POST_COMMANDS` | *(empty)* | Custom shell commands executed after provisioning (e.g. `adb connect 192.168.1.79:5555`). |
 ### Direct SSH & GJC CLI Access
 | Variable | Default | Description |
 |---|---|---|
