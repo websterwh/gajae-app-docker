@@ -68,17 +68,15 @@ else
 
     ARCHIVE_FILE="${TMP_DIR}/server.tar.gz"
     CHECKSUM_FILE="${TMP_DIR}/server.tar.gz.sha256"
-
     echo "==> Downloading ${TAG_NAME} from ${TARBALL_URL}..."
-    curl -fSL --progress-bar -o "${ARCHIVE_FILE}" "${TARBALL_URL}"
+    curl -fsSL -o "${ARCHIVE_FILE}" "${TARBALL_URL}"
 
     if [ -n "${CHECKSUM_URL}" ] && [ "${CHECKSUM_URL}" != "null" ]; then
         echo "==> Verifying SHA256 checksum..."
         curl -fsSL -o "${CHECKSUM_FILE}" "${CHECKSUM_URL}"
         EXPECTED_HASH="$(awk '{print $1}' "${CHECKSUM_FILE}")"
-        (cd "${TMP_DIR}" && echo "${EXPECTED_HASH}  server.tar.gz" | sha256sum -c -)
+        (cd "${TMP_DIR}" && echo "${EXPECTED_HASH}  server.tar.gz" | sha256sum -c --status)
     fi
-
     echo "==> Extracting to ${TARGET_DIR}..."
     tar -xzf "${ARCHIVE_FILE}" -C "${TARGET_DIR}"
     echo "${TAG_NAME}" > "${VERSION_FILE}"

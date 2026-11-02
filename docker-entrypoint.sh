@@ -106,7 +106,6 @@ provision_apt() {
 
     if [ "$should_install" = "true" ]; then
         echo "==> [APT] Provisioning packages: ${APT_PACKAGES}..."
-        apt-get update -y
         # Convert comma list to space-separated arguments
         local pkg_list=()
         while IFS= read -r pkg; do
@@ -114,9 +113,11 @@ provision_apt() {
         done < <(parse_csv "${APT_PACKAGES}")
 
         if [ ${#pkg_list[@]} -gt 0 ]; then
-            apt-get install -y --no-install-recommends "${pkg_list[@]}"
+            DEBIAN_FRONTEND=noninteractive apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends "${pkg_list[@]}" >/dev/null
         fi
         echo "$current_hash" > "$saved_hash_file"
+        echo "==> [APT] Finished provisioning packages."
     elif [ "${CHECK_PACKAGE_UPDATES}" = "true" ] || [ "${CHECK_PACKAGE_UPDATES}" = "1" ]; then
         echo "==> [APT] Checking for package updates..."
         apt-get update -qq || true
@@ -136,7 +137,7 @@ provision_uv_pip() {
             if [ "${AUTO_UPDATE_PACKAGES}" = "true" ] || [ "${AUTO_UPDATE_PACKAGES}" = "1" ]; then
                 uv_upgrade_flag="--upgrade"
             fi
-            uv tool install ${uv_upgrade_flag} "${tool}" || true
+            uv tool install -q ${uv_upgrade_flag} "${tool}" || true
         done < <(parse_csv "${UV_TOOLS}")
     fi
 
@@ -153,7 +154,7 @@ provision_uv_pip() {
             if [ "${AUTO_UPDATE_PACKAGES}" = "true" ] || [ "${AUTO_UPDATE_PACKAGES}" = "1" ]; then
                 pip_upgrade_flag="--upgrade"
             fi
-            uv pip install --system ${pip_upgrade_flag} "${pip_list[@]}" || true
+            uv pip install -q --system ${pip_upgrade_flag} "${pip_list[@]}" || true
         fi
     fi
 }
@@ -185,7 +186,7 @@ EOF
     done < <(parse_csv "${GITHUB_APPS}")
 
     echo "==> [Aqua] Installing GitHub apps..."
-    AQUA_ROOT_DIR="/data/aqua" aqua install -a -c "$aqua_yaml" || true
+    AQUA_ROOT_DIR="/data/aqua" aqua install -l -a -c "$aqua_yaml" >/dev/null 2>&1 || true
 
     # Link aqua binaries into /data/bin
     if [ -d "/data/aqua/bin" ]; then
@@ -196,8 +197,8 @@ EOF
     fi
 
     if [ "${AUTO_UPDATE_PACKAGES}" = "true" ] || [ "${AUTO_UPDATE_PACKAGES}" = "1" ]; then
-        echo "==> [Aqua] Updating GitHub apps..."
-        AQUA_ROOT_DIR="/data/aqua" aqua update-all -c "$aqua_yaml" || true
+        echo "==> [Aqua] Checking/updating GitHub apps..."
+        AQUA_ROOT_DIR="/data/aqua" aqua update-all -l -c "$aqua_yaml" >/dev/null 2>&1 || true
     fi
 }
 
