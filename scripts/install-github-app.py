@@ -34,9 +34,14 @@ def install_github_app(repo, target_bin="/data/bin", target_share="/data/share")
     repo_lower = repo.lower()
     # Special handler: jadx
     if "jadx" in repo_lower:
+        dest_dir = os.path.join(target_share, f"jadx-{tag}")
+        link_path = os.path.join(target_bin, "jadx")
+        if os.path.exists(os.path.join(dest_dir, "bin", "jadx")) and (os.path.exists(link_path) or os.path.islink(link_path)):
+            print(f"==> [GitHub App] jadx {tag} is already installed.")
+            return
+
         asset = next((a for a in assets if a["name"].endswith(".zip") and "win" not in a["name"]), None)
         if asset:
-            dest_dir = os.path.join(target_share, f"jadx-{tag}")
             zip_tmp = f"/tmp/jadx-{tag}.zip"
             print(f"==> [GitHub App] Downloading {asset['name']} ({tag})...")
             urllib.request.urlretrieve(asset["browser_download_url"], zip_tmp)
@@ -47,7 +52,6 @@ def install_github_app(repo, target_bin="/data/bin", target_share="/data/share")
             jadx_bin = os.path.join(dest_dir, "bin", "jadx")
             if os.path.exists(jadx_bin):
                 os.chmod(jadx_bin, os.stat(jadx_bin).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
-                link_path = os.path.join(target_bin, "jadx")
                 if os.path.islink(link_path) or os.path.exists(link_path):
                     os.remove(link_path)
                 os.symlink(jadx_bin, link_path)
@@ -56,12 +60,16 @@ def install_github_app(repo, target_bin="/data/bin", target_share="/data/share")
 
     # Special handler: apktool
     if "apktool" in repo_lower:
+        jar_dest = os.path.join(target_share, f"apktool-{tag}.jar")
+        wrapper_path = os.path.join(target_bin, "apktool")
+        if os.path.exists(jar_dest) and os.path.exists(wrapper_path):
+            print(f"==> [GitHub App] apktool {tag} is already installed.")
+            return
+
         asset = next((a for a in assets if a["name"].endswith(".jar")), None)
         if asset:
-            jar_dest = os.path.join(target_share, f"apktool-{tag}.jar")
             print(f"==> [GitHub App] Downloading {asset['name']} ({tag})...")
             urllib.request.urlretrieve(asset["browser_download_url"], jar_dest)
-            wrapper_path = os.path.join(target_bin, "apktool")
             with open(wrapper_path, "w") as f:
                 f.write(f'#!/bin/sh\nexec java -Xmx1024M -Dfile.encoding=UTF-8 -jar "{jar_dest}" "$@"\n')
             os.chmod(wrapper_path, 0o755)

@@ -44,9 +44,19 @@ export NPM_CONFIG_CACHE="/data/cache/npm"
 # ==============================================================================
 # Directory & Cache Preparation
 # ==============================================================================
-mkdir -p "${DATABASE_PATH%/*}" "${WORKSPACES_ROOT}" "${GJC_WORKER_AGENT_DIR}" /data/logs /app
+mkdir -p "${DATABASE_PATH%/*}" "${WORKSPACES_ROOT}" "${GJC_WORKER_AGENT_DIR}" /data/logs /data/app /data/share
 mkdir -p /data/bin /data/cache/apt/archives /data/cache/uv /data/cache/pip /data/cache/aqua /data/cache/npm /data/ssh /data/.installed_hashes
 mkdir -p /root/.ssh /var/run/sshd
+
+# Point /app to persistent /data/app so the extracted code survives container recreations
+if [ ! -L /app ]; then
+    # If /app was a plain directory with files, copy them or link
+    if [ -d /app ] && [ ! -d /data/app/dist-server ]; then
+        cp -a /app/. /data/app/ 2>/dev/null || true
+    fi
+    rm -rf /app
+    ln -s /data/app /app
+fi
 
 # Point apt archive cache to persistent /data/cache/apt/archives
 if [ ! -L /var/cache/apt/archives ]; then
@@ -96,16 +106,8 @@ provision_apt() {
     local previous_hash=""
     [ -f "$saved_hash_file" ] && previous_hash="$(cat "$saved_hash_file")"
 
-    local should_install="false"
     if [ "$current_hash" != "$previous_hash" ]; then
-        should_install="true"
-    elif [ "${AUTO_UPDATE_PACKAGES}" = "true" ] || [ "${AUTO_UPDATE_PACKAGES}" = "1" ]; then
-        should_install="true"
-    fi
-
-    if [ "$should_install" = "true" ]; then
-        echo "==> [APT] Provisioning packages: ${APT_PACKAGES}..."
-        # Convert comma list to space-separated arguments
+        echo "==> [APT] Package list changed. Provisioning: ${APT_PACKAGES}..."
         local pkg_list=()
         while IFS= read -r pkg; do
             pkg_list+=("$pkg")
@@ -117,10 +119,18 @@ provision_apt() {
         fi
         echo "$current_hash" > "$saved_hash_file"
         echo "==> [APT] Finished provisioning packages."
-    elif [ "${CHECK_PACKAGE_UPDATES}" = "true" ] || [ "${CHECK_PACKAGE_UPDATES}" = "1" ]; then
-        echo "==> [APT] Checking for package updates..."
+    elif [ "${AUTO_UPDATE_PACKAGES}" = "true" ] || [ "${AUTO_UPDATE_PACKAGES}" = "1" ]; then
+        echo "==> [APT] Checking for updates on installed packages..."
         apt-get update -qq || true
-        apt-get --just-print upgrade 2>/dev/null | grep -E "^Inst " || true
+        local upgradable
+        upgradable="$(apt-get --just-print upgrade 2>/dev/null | grep -E '^Inst ' || true)"
+        if [ -n "$upgradable" ]; then
+            echo "==> [APT] Upgrades available. Updating packages..."
+            DEBIAN_FRONTEND=noninteractive apt-get upgrade -qq -y >/dev/null || true
+            echo "==> [APT] Finished upgrading packages."
+        else
+            echo "==> [APT] Packages are up to date."
+        fi
     fi
 }
 

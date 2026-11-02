@@ -69,8 +69,24 @@ else
     ARCHIVE_FILE="${TMP_DIR}/server.tar.gz"
     CHECKSUM_FILE="${TMP_DIR}/server.tar.gz.sha256"
     echo "==> Downloading ${TAG_NAME} from ${TARBALL_URL}..."
-    curl -fsSL -o "${ARCHIVE_FILE}" "${TARBALL_URL}"
-
+    python3 -c "
+import urllib.request, sys
+url, out = sys.argv[1], sys.argv[2]
+req = urllib.request.Request(url, headers={'User-Agent': 'Gajae-Updater'})
+with urllib.request.urlopen(req) as resp, open(out, 'wb') as f:
+    total = int(resp.headers.get('Content-Length', 0))
+    done, last = 0, -25
+    while True:
+        chunk = resp.read(131072)
+        if not chunk: break
+        f.write(chunk)
+        done += len(chunk)
+        if total:
+            pct = int(done * 100 / total)
+            if pct >= last + 25 or pct == 100:
+                print(f'==> [Download] {pct}% ({done // 1048576}MB / {total // 1048576}MB)', flush=True)
+                last = pct
+" "${TARBALL_URL}" "${ARCHIVE_FILE}"
     if [ -n "${CHECKSUM_URL}" ] && [ "${CHECKSUM_URL}" != "null" ]; then
         echo "==> Verifying SHA256 checksum..."
         curl -fsSL -o "${CHECKSUM_FILE}" "${CHECKSUM_URL}"
