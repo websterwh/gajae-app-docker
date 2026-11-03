@@ -347,6 +347,8 @@ EOF
     # Also set /workspace as home or cd on login
     cat > /root/.bash_profile <<EOF
 export PATH="/data/bin:/root/.local/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:\$PATH"
+export EDITOR="nano"
+export VISUAL="nano"
 if [ -f /root/.bashrc ]; then
     . /root/.bashrc
 fi
@@ -357,6 +359,8 @@ EOF
 
     cat > /root/.bashrc <<EOF
 export PATH="/data/bin:/root/.local/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:\$PATH"
+export EDITOR="nano"
+export VISUAL="nano"
 # Set shell working directory to WORKSPACES_ROOT
 if [ -d "${WORKSPACES_ROOT}" ]; then
     cd "${WORKSPACES_ROOT}" 2>/dev/null || true

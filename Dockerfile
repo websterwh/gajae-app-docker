@@ -41,6 +41,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libasound2 \
     && rm -rf /var/lib/apt/lists/*
 
+# Set default editor alternative to nano
+RUN update-alternatives --set editor /bin/nano 2>/dev/null || true
 # Install uv & uvx (fast Python package / tool runner)
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
     chmod 0755 /usr/local/bin/uv /usr/local/bin/uvx 2>/dev/null || true
@@ -67,6 +69,8 @@ RUN mkdir -p /data /data/bin /workspace /root/.gjc /data/app /var/run/sshd && \
     ln -sf /data/app /app
 # Default environment configuration
 ENV PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH" \
+    EDITOR="nano" \
+    VISUAL="nano" \
     UV_CACHE_DIR="/data/cache/uv" \
     PIP_CACHE_DIR="/data/cache/pip" \
     UV_LINK_MODE="copy" \
