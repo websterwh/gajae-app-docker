@@ -48,16 +48,14 @@ mkdir -p "${DATABASE_PATH%/*}" "${WORKSPACES_ROOT}" "${GJC_WORKER_AGENT_DIR}" /d
 mkdir -p /data/bin /data/cache/apt/archives /data/cache/uv /data/cache/pip /data/cache/aqua /data/cache/npm /data/ssh /data/.installed_hashes
 mkdir -p /root/.ssh /var/run/sshd
 
-# Point /app to persistent /data/app so the extracted code survives container recreations
+# Ensure /app symlink points to /data/app
 if [ ! -L /app ]; then
-    # If /app was a plain directory with files, copy them or link
-    if [ -d /app ] && [ ! -d /data/app/dist-server ]; then
-        cp -a /app/. /data/app/ 2>/dev/null || true
-    fi
     rm -rf /app
     ln -s /data/app /app
 fi
 
+# Ensure working directory exists and cd into it so uv_cwd never fails
+cd /data/app
 # Point apt archive cache to persistent /data/cache/apt/archives
 if [ ! -L /var/cache/apt/archives ]; then
     rm -rf /var/cache/apt/archives
@@ -188,10 +186,15 @@ provision_aqua() {
 # ==============================================================================
 provision_gjc_cli() {
     if [ "${INSTALL_GJC_CLI}" = "true" ] || [ "${INSTALL_GJC_CLI}" = "1" ]; then
-        if [ ! -f "/data/bin/gjc" ]; then
+        if [ -x "/root/.local/bin/gjc" ]; then
+            ln -sf "/root/.local/bin/gjc" /data/bin/gjc
+        elif [ ! -f "/data/bin/gjc" ]; then
             echo "==> [GJC CLI] Creating standalone /data/bin/gjc launcher..."
             cat > /data/bin/gjc <<'EOF'
 #!/bin/sh
+if [ -x "/root/.local/bin/gjc" ]; then
+    exec /root/.local/bin/gjc "$@"
+fi
 exec bun /app/node_modules/@gajae-code/coding-agent/bin/gjc.js "$@"
 EOF
             chmod 0755 /data/bin/gjc

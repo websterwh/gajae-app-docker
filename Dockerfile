@@ -47,20 +47,20 @@ RUN curl -sSfL https://github.com/aquaproj/aqua/releases/download/v2.66.0/aqua_l
 
 # Configure Git system-wide to trust all mounted directories
 RUN git config --system --add safe.directory '*'
-
-WORKDIR /app
+WORKDIR /data/app
 
 # Copy installation & update scripts
 COPY scripts/install-release.sh /usr/local/bin/install-release
 COPY scripts/install-github-app.py /usr/local/bin/install-github-app
 RUN chmod +x /usr/local/bin/install-release /usr/local/bin/install-github-app
+
 # Install global CLI wrapper for convenience
 RUN printf '#!/bin/sh\nexec node /app/dist-server/server/cli.js "$@"\n' > /usr/local/bin/gajae-app && \
     chmod 0755 /usr/local/bin/gajae-app
 
-# Create default mount points for persistence
-RUN mkdir -p /data /data/bin /workspace /root/.gjc /app /var/run/sshd
-
+# Create default mount points for persistence and set up /app link
+RUN mkdir -p /data /data/bin /workspace /root/.gjc /data/app /var/run/sshd && \
+    ln -sf /data/app /app
 # Default environment configuration
 ENV PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH" \
     UV_CACHE_DIR="/data/cache/uv" \
