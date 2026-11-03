@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     git \
+    nano \
+    vim-tiny \
+    busybox \
     python3 \
     python3-pip \
     procps \
