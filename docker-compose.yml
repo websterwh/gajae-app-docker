@@ -40,7 +40,7 @@ services:
       - SSH_PASSWORD=${SSH_PASSWORD:-}
       - SSH_PUBLIC_KEYS=${SSH_PUBLIC_KEYS:-}
       - SSH_NO_AUTH=${SSH_NO_AUTH:-false}
-      - SSH_DEFAULT_COMMAND=${SSH_DEFAULT_COMMAND:-gjc}
+      - SSH_DEFAULT_COMMAND=${SSH_DEFAULT_COMMAND:-}
       - INSTALL_GJC_CLI=${INSTALL_GJC_CLI:-true}
 
       # Optional AI Provider API Keys (or configure them in the web settings)

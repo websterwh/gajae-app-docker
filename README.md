@@ -86,7 +86,7 @@ Official Docker packaging for **Gajae Code App** (`gajae-app`), featuring **dyna
 | `SSH_PASSWORD` | *(empty)* | Root password for SSH if password authentication is enabled. |
 | `SSH_PUBLIC_KEYS` | *(empty)* | Public key(s) or URL (https://...) to authorize for SSH. |
 | `SSH_NO_AUTH` | `false` | Permit passwordless/keyless direct SSH login (for trusted private networks). |
-| `SSH_DEFAULT_COMMAND`| `gjc` | Default command executed on interactive login: `gjc` (interactive agent) or `bash`. |
+| `SSH_DEFAULT_COMMAND`| *(empty)* | Optional command to run on SSH login (leave empty to land directly in standard bash shell). |
 | `INSTALL_GJC_CLI` | `true` | Create standalone launcher at `/data/bin/gjc`. |
 
 ---

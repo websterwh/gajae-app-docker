@@ -90,8 +90,7 @@ ENV PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH" \
     SSH_PASSWORD="" \
     SSH_PUBLIC_KEYS="" \
     SSH_NO_AUTH=false \
-    SSH_DEFAULT_COMMAND=gjc
-
+    SSH_DEFAULT_COMMAND=""
 EXPOSE 3001 2222
 
 VOLUME ["/data", "/workspace", "/root/.gjc"]

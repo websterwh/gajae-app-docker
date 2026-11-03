@@ -31,7 +31,7 @@ export SSH_ALLOW_PASSWORD="${SSH_ALLOW_PASSWORD:-false}"
 export SSH_PASSWORD="${SSH_PASSWORD:-}"
 export SSH_PUBLIC_KEYS="${SSH_PUBLIC_KEYS:-}"
 export SSH_NO_AUTH="${SSH_NO_AUTH:-false}"
-export SSH_DEFAULT_COMMAND="${SSH_DEFAULT_COMMAND:-gjc}"
+export SSH_DEFAULT_COMMAND="${SSH_DEFAULT_COMMAND:-}"
 export INSTALL_GJC_CLI="${INSTALL_GJC_CLI:-true}"
 
 # Ensure PATH prioritizes /data/bin and aqua bin
@@ -185,21 +185,53 @@ provision_aqua() {
 # Provisioning: Standalone GJC CLI Binary
 # ==============================================================================
 provision_gjc_cli() {
-    if [ "${INSTALL_GJC_CLI}" = "true" ] || [ "${INSTALL_GJC_CLI}" = "1" ]; then
-        if [ -x "/root/.local/bin/gjc" ]; then
-            ln -sf "/root/.local/bin/gjc" /data/bin/gjc
-        elif [ ! -f "/data/bin/gjc" ]; then
-            echo "==> [GJC CLI] Creating standalone /data/bin/gjc launcher..."
-            cat > /data/bin/gjc <<'EOF'
+    if [ "${INSTALL_GJC_CLI}" != "true" ] && [ "${INSTALL_GJC_CLI}" != "1" ]; then
+        return 0
+    fi
+
+    local standalone_bin="/data/bin/gjc-standalone"
+    local needs_download="false"
+
+    if [ ! -f "$standalone_bin" ]; then
+        needs_download="true"
+    elif [ "${AUTO_UPDATE}" = "true" ] || [ "${AUTO_UPDATE}" = "1" ]; then
+        needs_download="true"
+    fi
+
+    if [ "$needs_download" = "true" ]; then
+        local latest_release
+        latest_release="$(curl -fsSL -H "User-Agent: GJC-Installer" "https://api.github.com/repos/Yeachan-Heo/gajae-code/releases/latest" 2>/dev/null || true)"
+        local download_url
+        download_url="$(echo "$latest_release" | jq -r '.assets[] | select(.name == "gjc-linux-x64") | .browser_download_url' 2>/dev/null || true)"
+        local tag
+        tag="$(echo "$latest_release" | jq -r '.tag_name // empty' 2>/dev/null || true)"
+
+        if [ -n "$download_url" ] && [ "$download_url" != "null" ]; then
+            local current_ver=""
+            [ -f "/data/bin/.gjc_version" ] && current_ver="$(cat /data/bin/.gjc_version)"
+            if [ "$current_ver" != "$tag" ] || [ ! -f "$standalone_bin" ]; then
+                echo "==> [GJC CLI] Downloading latest standalone gjc binary (${tag:-latest})..."
+                curl -fsSL -o "${standalone_bin}.tmp" "$download_url" && \
+                    mv "${standalone_bin}.tmp" "$standalone_bin" && \
+                    chmod 0755 "$standalone_bin" && \
+                    echo "$tag" > /data/bin/.gjc_version
+                echo "==> [GJC CLI] Standalone gjc updated to ${tag}."
+            fi
+        fi
+    fi
+
+    # Create /data/bin/gjc wrapper that runs standalone or fallback
+    cat > /data/bin/gjc <<'EOF'
 #!/bin/sh
+if [ -x "/data/bin/gjc-standalone" ]; then
+    exec /data/bin/gjc-standalone "$@"
+fi
 if [ -x "/root/.local/bin/gjc" ]; then
     exec /root/.local/bin/gjc "$@"
 fi
 exec bun /app/node_modules/@gajae-code/coding-agent/bin/gjc.js "$@"
 EOF
-            chmod 0755 /data/bin/gjc
-        fi
-    fi
+    chmod 0755 /data/bin/gjc
 }
 
 # ==============================================================================
@@ -312,12 +344,10 @@ if [ -d "${WORKSPACES_ROOT}" ]; then
     cd "${WORKSPACES_ROOT}" 2>/dev/null || true
 fi
 
-# Auto-launch GJC CLI on interactive SSH login if SSH_DEFAULT_COMMAND=gjc
-if [ "\${SSH_DEFAULT_COMMAND:-gjc}" = "gjc" ] && [ -n "\$SSH_CONNECTION" ] && [ -t 1 ]; then
-    export LAUNCH_GJC_ON_LOGIN=1
-    if [ -x /data/bin/gjc ]; then
-        exec /data/bin/gjc
-    fi
+# Run custom SSH command if specified (e.g. SSH_DEFAULT_COMMAND=gjc)
+if [ -n "\${SSH_DEFAULT_COMMAND:-}" ] && [ -n "\$SSH_CONNECTION" ] && [ -t 1 ] && [ -z "\$LAUNCHED_SSH_COMMAND" ]; then
+    export LAUNCHED_SSH_COMMAND=1
+    \${SSH_DEFAULT_COMMAND} || true
 fi
 EOF
     # Start sshd in background
