@@ -83,8 +83,11 @@ fi
 # Ensure upstream gjc-bun-sdk-adapter recognizes auth: none (credentialless) providers
 if [ -f "/app/dist-server/server/gjc-bun-sdk-adapter.js" ]; then
     sed -i 's/if (!eligibleProviders.has(provider) && await authStorage.peekApiKey(provider) !== undefined)/if (!eligibleProviders.has(provider) \&\& (modelRegistry.isCredentiallessProvider(provider) || await authStorage.peekApiKey(provider) !== undefined))/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
+    sed -i 's/async function credentialFor(authStorage, credential, model) {/async function credentialFor(authStorage, credential, model, modelRegistry) {/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
+    sed -i 's/const resolvedCredential = await credentialFor(this.authStorage, config.credential, model);/const resolvedCredential = await credentialFor(this.authStorage, config.credential, model, this.modelRegistry);/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
+    sed -i 's/if (await authStorage.peekApiKey(model.provider) === undefined)/if (!modelRegistry?.isCredentiallessProvider(model.provider) \&\& await authStorage.peekApiKey(model.provider) === undefined)/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
+    sed -i 's/if (typeof profileName !== '\''string'\'' || !profileName)/if ((typeof profileName !== '\''string'\'' || !profileName) \&\& availableModels.length > 0) return `${availableModels[0].provider}\/${availableModels[0].id}`;\n    if (typeof profileName !== '\''string'\'' || !profileName)/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
 fi
-
 # Ensure bun is in PATH if present in dist-native
 if [ -f "/app/dist-native/bun" ] && [ ! -f "/usr/local/bin/bun" ]; then
     ln -sf /app/dist-native/bun /usr/local/bin/bun

@@ -101,8 +101,11 @@ with urllib.request.urlopen(req) as resp, open(out, 'wb') as f:
     local adapter_js="${TARGET_DIR}/dist-server/server/gjc-bun-sdk-adapter.js"
     if [ -f "$adapter_js" ]; then
         sed -i 's/if (!eligibleProviders.has(provider) && await authStorage.peekApiKey(provider) !== undefined)/if (!eligibleProviders.has(provider) \&\& (modelRegistry.isCredentiallessProvider(provider) || await authStorage.peekApiKey(provider) !== undefined))/' "$adapter_js" 2>/dev/null || true
+        sed -i 's/async function credentialFor(authStorage, credential, model) {/async function credentialFor(authStorage, credential, model, modelRegistry) {/' "$adapter_js" 2>/dev/null || true
+        sed -i 's/const resolvedCredential = await credentialFor(this.authStorage, config.credential, model);/const resolvedCredential = await credentialFor(this.authStorage, config.credential, model, this.modelRegistry);/' "$adapter_js" 2>/dev/null || true
+        sed -i 's/if (await authStorage.peekApiKey(model.provider) === undefined)/if (!modelRegistry?.isCredentiallessProvider(model.provider) \&\& await authStorage.peekApiKey(model.provider) === undefined)/' "$adapter_js" 2>/dev/null || true
+        sed -i 's/if (typeof profileName !== '\''string'\'' || !profileName)/if ((typeof profileName !== '\''string'\'' || !profileName) \&\& availableModels.length > 0) return `${availableModels[0].provider}\/${availableModels[0].id}`;\n    if (typeof profileName !== '\''string'\'' || !profileName)/' "$adapter_js" 2>/dev/null || true
     fi
-
     # Symlink bun if bundled in dist-native
     if [ -f "${TARGET_DIR}/dist-native/bun" ]; then
         ln -sf "${TARGET_DIR}/dist-native/bun" /usr/local/bin/bun
