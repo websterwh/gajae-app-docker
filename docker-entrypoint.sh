@@ -34,8 +34,8 @@ export SSH_NO_AUTH="${SSH_NO_AUTH:-false}"
 export SSH_DEFAULT_COMMAND="${SSH_DEFAULT_COMMAND:-}"
 export INSTALL_GJC_CLI="${INSTALL_GJC_CLI:-true}"
 
-# Ensure PATH prioritizes /data/bin and aqua bin
-export PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH"
+# Ensure PATH prioritizes /data/bin, /root/.local/bin, and aqua bin
+export PATH="/data/bin:/root/.local/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH"
 export UV_CACHE_DIR="/data/cache/uv"
 export PIP_CACHE_DIR="/data/cache/pip"
 export UV_LINK_MODE="copy"
@@ -138,16 +138,24 @@ provision_apt() {
 provision_uv_pip() {
     # UV Tools (Isolated CLI tools / MCP servers)
     if [ -n "${UV_TOOLS}" ]; then
-        while IFS= read -r tool; do
-            echo "==> [UV Tool] Installing tool: ${tool}..."
-            local uv_upgrade_flag=""
-            if [ "${AUTO_UPDATE_PACKAGES}" = "true" ] || [ "${AUTO_UPDATE_PACKAGES}" = "1" ]; then
-                uv_upgrade_flag="--upgrade"
-            fi
-            uv tool install -q ${uv_upgrade_flag} "${tool}" || true
-        done < <(parse_csv "${UV_TOOLS}")
-    fi
+        local current_uv_hash
+        current_uv_hash="$(echo -n "${UV_TOOLS}" | md5sum | awk '{print $1}')"
+        local saved_uv_hash_file="/data/.installed_hashes/uv.hash"
+        local prev_uv_hash=""
+        [ -f "$saved_uv_hash_file" ] && prev_uv_hash="$(cat "$saved_uv_hash_file")"
 
+        if [ "$current_uv_hash" != "$prev_uv_hash" ]; then
+            while IFS= read -r tool; do
+                echo "==> [UV Tool] Installing tool: ${tool}..."
+                uv tool install -q "${tool}" || true
+            done < <(parse_csv "${UV_TOOLS}")
+            echo "$current_uv_hash" > "$saved_uv_hash_file"
+        elif [ "${AUTO_UPDATE_PACKAGES}" = "true" ] || [ "${AUTO_UPDATE_PACKAGES}" = "1" ]; then
+            echo "==> [UV Tool] Checking for tool updates..."
+            uv tool upgrade --all -q 2>/dev/null || true
+            echo "==> [UV Tool] Tools are up to date."
+        fi
+    fi
     # Global Pip Packages
     if [ -n "${PIP_PACKAGES}" ]; then
         local pip_list=()
@@ -278,6 +286,7 @@ UsePAM no
 X11Forwarding no
 PrintMotd no
 AcceptEnv LANG LC_*
+SetEnv PATH=/data/bin:/root/.local/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:/usr/bin:/bin
 Subsystem sftp /usr/lib/openssh/sftp-server
 EOF
 
@@ -330,6 +339,7 @@ EOF
     # Configure interactive shell landing in WORKSPACES_ROOT and default command
     # Also set /workspace as home or cd on login
     cat > /root/.bash_profile <<EOF
+export PATH="/data/bin:/root/.local/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:\$PATH"
 if [ -f /root/.bashrc ]; then
     . /root/.bashrc
 fi
@@ -339,6 +349,7 @@ fi
 EOF
 
     cat > /root/.bashrc <<EOF
+export PATH="/data/bin:/root/.local/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:\$PATH"
 # Set shell working directory to WORKSPACES_ROOT
 if [ -d "${WORKSPACES_ROOT}" ]; then
     cd "${WORKSPACES_ROOT}" 2>/dev/null || true
