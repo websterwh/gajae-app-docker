@@ -10,6 +10,7 @@ LABEL org.opencontainers.image.title="Gajae Code App" \
 # - openssh-server for container SSH access
 # - Playwright / Chromium headless rendering dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    apt-utils \
     ca-certificates \
     curl \
     git \

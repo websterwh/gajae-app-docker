@@ -10,7 +10,6 @@ def install_github_app(repo, target_bin="/data/bin", target_share="/data/share")
     repo = repo.strip()
     if not repo:
         return
-    print(f"==> [GitHub App] Installing {repo}...")
     headers = {"User-Agent": "GitHub-App-Installer"}
     token = os.environ.get("GITHUB_TOKEN")
     if token:
@@ -40,6 +39,7 @@ def install_github_app(repo, target_bin="/data/bin", target_share="/data/share")
             print(f"==> [GitHub App] jadx {tag} is already installed.")
             return
 
+        print(f"==> [GitHub App] Installing {repo}...")
         asset = next((a for a in assets if a["name"].endswith(".zip") and "win" not in a["name"]), None)
         if asset:
             zip_tmp = f"/tmp/jadx-{tag}.zip"
@@ -66,6 +66,7 @@ def install_github_app(repo, target_bin="/data/bin", target_share="/data/share")
             print(f"==> [GitHub App] apktool {tag} is already installed.")
             return
 
+        print(f"==> [GitHub App] Installing {repo}...")
         asset = next((a for a in assets if a["name"].endswith(".jar")), None)
         if asset:
             print(f"==> [GitHub App] Downloading {asset['name']} ({tag})...")
