@@ -46,8 +46,15 @@ export NPM_CONFIG_CACHE="/data/cache/npm"
 # ==============================================================================
 mkdir -p "${DATABASE_PATH%/*}" "${WORKSPACES_ROOT}" "${GJC_WORKER_AGENT_DIR}" /data/logs /data/app /data/share
 mkdir -p /data/bin /data/cache/apt/archives /data/cache/uv /data/cache/pip /data/cache/aqua /data/cache/npm /data/ssh /data/.installed_hashes
-mkdir -p /root/.ssh /var/run/sshd
+mkdir -p /root/.ssh /var/run/sshd /var/lib/dbus
 
+# Ensure machine-id exists and persists in /data so GJC machine-local identity is valid
+if [ ! -f /data/machine-id ]; then
+    od -vN 16 -An -tx1 /dev/urandom | tr -d ' \r\n' > /data/machine-id
+    printf '\n' >> /data/machine-id
+fi
+cp -f /data/machine-id /etc/machine-id
+cp -f /data/machine-id /var/lib/dbus/machine-id 2>/dev/null || true
 # Ensure /app symlink points to /data/app
 if [ ! -L /app ]; then
     rm -rf /app
