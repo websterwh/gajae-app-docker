@@ -97,6 +97,12 @@ with urllib.request.urlopen(req) as resp, open(out, 'wb') as f:
     tar -xzf "${ARCHIVE_FILE}" -C "${TARGET_DIR}"
     echo "${TAG_NAME}" > "${VERSION_FILE}"
 
+    # Patch upstream gjc-bun-sdk-adapter to recognize auth: none (credentialless) custom providers
+    local adapter_js="${TARGET_DIR}/dist-server/server/gjc-bun-sdk-adapter.js"
+    if [ -f "$adapter_js" ]; then
+        sed -i 's/if (!eligibleProviders.has(provider) && await authStorage.peekApiKey(provider) !== undefined)/if (!eligibleProviders.has(provider) \&\& (modelRegistry.isCredentiallessProvider(provider) || await authStorage.peekApiKey(provider) !== undefined))/' "$adapter_js" 2>/dev/null || true
+    fi
+
     # Symlink bun if bundled in dist-native
     if [ -f "${TARGET_DIR}/dist-native/bun" ]; then
         ln -sf "${TARGET_DIR}/dist-native/bun" /usr/local/bin/bun

@@ -80,6 +80,11 @@ elif [ "${AUTO_UPDATE}" = "true" ] || [ "${AUTO_UPDATE}" = "1" ]; then
     /usr/local/bin/install-release "${UPSTREAM_REPO}" "${VERSION}" /app || true
 fi
 
+# Ensure upstream gjc-bun-sdk-adapter recognizes auth: none (credentialless) providers
+if [ -f "/app/dist-server/server/gjc-bun-sdk-adapter.js" ]; then
+    sed -i 's/if (!eligibleProviders.has(provider) && await authStorage.peekApiKey(provider) !== undefined)/if (!eligibleProviders.has(provider) \&\& (modelRegistry.isCredentiallessProvider(provider) || await authStorage.peekApiKey(provider) !== undefined))/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
+fi
+
 # Ensure bun is in PATH if present in dist-native
 if [ -f "/app/dist-native/bun" ] && [ ! -f "/usr/local/bin/bun" ]; then
     ln -sf /app/dist-native/bun /usr/local/bin/bun
