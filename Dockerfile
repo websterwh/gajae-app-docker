@@ -1,21 +1,28 @@
 # The upstream bundle contract requires the Linux binaries to be compiled on
 # glibc 2.35 (Ubuntu 22.04/Jammy).
-FROM node:22-jammy AS app-build
+FROM ubuntu:22.04 AS app-build
 
 ARG APP_REPOSITORY=https://github.com/websterwh/gajae-code-app.git
 ARG APP_REF=5dd9f7fbb4b64df183da491ec785ea35e22e983f
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
     git \
     python3 \
     make \
     g++ \
-    cargo \
-    rustc \
     tar \
     gzip \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /src
 RUN git clone "${APP_REPOSITORY}" . && \
