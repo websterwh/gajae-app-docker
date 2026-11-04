@@ -4,6 +4,7 @@ FROM ubuntu:22.04 AS app-build
 
 ARG APP_REPOSITORY=https://github.com/websterwh/gajae-code-app.git
 ARG APP_REF=main
+ARG APP_SOURCE_REFRESH=manual
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -27,6 +28,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 WORKDIR /src
 RUN git clone "${APP_REPOSITORY}" . && \
     git checkout --detach "${APP_REF}" && \
+    test -n "${APP_SOURCE_REFRESH}" && \
     APP_COMMIT="$(git rev-parse HEAD)" && \
     npm ci && \
     node scripts/fetch-bun.mjs && \
