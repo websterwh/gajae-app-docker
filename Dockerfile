@@ -3,7 +3,7 @@
 FROM ubuntu:22.04 AS app-build
 
 ARG APP_REPOSITORY=https://github.com/websterwh/gajae-code-app.git
-ARG APP_REF=5dd9f7fbb4b64df183da491ec785ea35e22e983f
+ARG APP_REF=main
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -37,7 +37,7 @@ RUN git clone "${APP_REPOSITORY}" . && \
 FROM node:22-bookworm-slim
 
 LABEL org.opencontainers.image.title="Gajae Code App" \
-      org.opencontainers.image.description="Container image for a pinned Gajae Code App source revision with SSH and package provisioning" \
+      org.opencontainers.image.description="Container image for Gajae Code App fork builds with SSH and package provisioning" \
       org.opencontainers.image.source="https://github.com/websterwh/gajae-app-docker" \
       org.opencontainers.image.licenses="MIT"
 
@@ -95,7 +95,7 @@ WORKDIR /opt/gajae-app
 COPY scripts/install-github-app.py /usr/local/bin/install-github-app
 RUN chmod +x /usr/local/bin/install-github-app
 
-# Copy the application built from the pinned fork revision.
+# Copy the application built from the selected fork revision.
 COPY --from=app-build /opt/gajae-app /opt/gajae-app
 
 # Install global CLI wrapper for convenience.

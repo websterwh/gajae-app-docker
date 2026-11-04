@@ -1,13 +1,13 @@
 # Gajae Code App Docker
 
-Docker packaging for **Gajae Code App** (`gajae-app`) built from a pinned revision of the [`websterwh/gajae-code-app`](https://github.com/websterwh/gajae-code-app) source fork. It includes universal package provisioning (APT/UV/Pip/Aqua), Android ADB auto-connect, and direct SSH CLI access.
+Docker packaging for **Gajae Code App** (`gajae-app`) built from the latest `main` revision of the [`websterwh/gajae-code-app`](https://github.com/websterwh/gajae-code-app) source fork. It includes universal package provisioning (APT/UV/Pip/Aqua), Android ADB auto-connect, and direct SSH CLI access.
 
 ---
 
 ## Highlights
 
-- 🔒 **Reproducible application builds**: The image compiles a specific source commit during `docker compose build`; startup never downloads or modifies application code.
-- 🔀 **Upstream-friendly fork workflow**: Merge `devswha/gajae-code-app` into the source fork, update `APP_REF`, then rebuild the image.
+- **Latest fork builds**: The image compiles the current source-fork `main` when rebuilt without Docker's cache; startup never rewrites application code.
+- 🔀 **Upstream-friendly fork workflow**: Merge `devswha/gajae-code-app` into the source fork, then rebuild the image.
 - 📦 **Universal Addon Package Provisioning**:
   - `APT_PACKAGES`: Comma-separated Debian packages (e.g. `openjdk-17-jre-headless,ffmpeg`).
   - `UV_TOOLS`: Standalone Python CLI tools / MCP servers (e.g. `serena,canvas-mcp-server`).
@@ -64,9 +64,15 @@ git merge upstream/main
 git push origin main
 ```
 
-Set `APP_REF` to the resulting commit and rebuild with
-`docker compose up -d --build`. Pinning a commit, rather than `main`, makes a
-running image traceable to the exact source it contains.
+Rebuild after each merge with:
+
+```bash
+docker compose build --pull --no-cache
+docker compose up -d
+```
+
+`APP_REF` defaults to `main`. Override it with a commit only when a fixed
+revision is required.
 
 ---
 
@@ -83,7 +89,7 @@ running image traceable to the exact source it contains.
 | `WORKSPACES_ROOT` | `/workspace` | Default directory root for GJC agent projects. |
 | `GJC_WORKER_AGENT_DIR` | `/root/.gjc/agent` | Storage directory for agent sessions and custom skills. |
 | `APP_REPOSITORY` | `https://github.com/websterwh/gajae-code-app.git` | Source repository cloned during the image build. Set as a Compose build argument. |
-| `APP_REF` | `5dd9f7fbb4b64df183da491ec785ea35e22e983f` | Immutable source commit built into the image. Set as a Compose build argument. |
+| `APP_REF` | `main` | Fork revision built into the image. Use `main` for the latest fork code or a commit for a fixed revision. Set as a Compose build argument. |
 
 ### Universal Package Provisioning
 | Variable | Default | Description |

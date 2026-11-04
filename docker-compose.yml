@@ -5,7 +5,7 @@ services:
       context: .
       args:
         APP_REPOSITORY: ${APP_REPOSITORY:-https://github.com/websterwh/gajae-code-app.git}
-        APP_REF: ${APP_REF:-5dd9f7fbb4b64df183da491ec785ea35e22e983f}
+        APP_REF: ${APP_REF:-main}
     container_name: gajae-app
     restart: unless-stopped
     ports:
