@@ -54,10 +54,11 @@ Docker packaging for **Gajae Code App** (`gajae-app`) built from a pinned revisi
 ## Updating the App Fork
 
 The container never applies runtime patches. Application changes belong in
-[`websterwh/gajae-code-app`](https://github.com/websterwh/gajae-code-app), whose
-`upstream` remote is `https://github.com/devswha/gajae-code-app.git`.
+[`websterwh/gajae-code-app`](https://github.com/websterwh/gajae-code-app).
+After cloning that fork, configure its upstream remote once:
 
 ```bash
+git remote add upstream https://github.com/devswha/gajae-code-app.git
 git fetch upstream
 git merge upstream/main
 git push origin main
