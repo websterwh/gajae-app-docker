@@ -1,7 +1,36 @@
+# The upstream bundle contract requires the Linux binaries to be compiled on
+# glibc 2.35 (Ubuntu 22.04/Jammy).
+FROM node:22-jammy AS app-build
+
+ARG APP_REPOSITORY=https://github.com/websterwh/gajae-code-app.git
+ARG APP_REF=5dd9f7fbb4b64df183da491ec785ea35e22e983f
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    python3 \
+    make \
+    g++ \
+    cargo \
+    rustc \
+    tar \
+    gzip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+RUN git clone "${APP_REPOSITORY}" . && \
+    git checkout --detach "${APP_REF}" && \
+    npm ci && \
+    node scripts/fetch-bun.mjs && \
+    npm run server:bundle && \
+    mkdir /opt/gajae-app && \
+    tar -xzf release/server/gajae-app-server-*-linux-x64-node22.tar.gz -C /opt/gajae-app && \
+    printf '%s\n' "${APP_REF}" > /opt/gajae-app/.image_revision
+
 FROM node:22-bookworm-slim
 
 LABEL org.opencontainers.image.title="Gajae Code App" \
-      org.opencontainers.image.description="Dynamic runtime container for Gajae Code App with automatic self-updating, SSH, and package provisioning" \
+      org.opencontainers.image.description="Container image for a pinned Gajae Code App source revision with SSH and package provisioning" \
       org.opencontainers.image.source="https://github.com/websterwh/gajae-app-docker" \
       org.opencontainers.image.licenses="MIT"
 
@@ -51,22 +80,23 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/b
 RUN curl -sSfL https://github.com/aquaproj/aqua/releases/download/v2.66.0/aqua_linux_amd64.tar.gz | tar -xz -C /usr/local/bin aqua && \
     chmod 0755 /usr/local/bin/aqua
 
-# Configure Git system-wide to trust all mounted directories
+# Configure Git system-wide to trust all mounted directories.
 RUN git config --system --add safe.directory '*'
-WORKDIR /data/app
+WORKDIR /opt/gajae-app
 
-# Copy installation & update scripts
-COPY scripts/install-release.sh /usr/local/bin/install-release
+# Copy package installation helper.
 COPY scripts/install-github-app.py /usr/local/bin/install-github-app
-RUN chmod +x /usr/local/bin/install-release /usr/local/bin/install-github-app
+RUN chmod +x /usr/local/bin/install-github-app
 
-# Install global CLI wrapper for convenience
-RUN printf '#!/bin/sh\nexec node /app/dist-server/server/cli.js "$@"\n' > /usr/local/bin/gajae-app && \
+# Copy the application built from the pinned fork revision.
+COPY --from=app-build /opt/gajae-app /opt/gajae-app
+
+# Install global CLI wrapper for convenience.
+RUN printf '#!/bin/sh\nexec node /opt/gajae-app/dist-server/server/cli.js "$@"\n' > /usr/local/bin/gajae-app && \
     chmod 0755 /usr/local/bin/gajae-app
 
-# Create default mount points for persistence and set up /app link
-RUN mkdir -p /data /data/bin /workspace /root/.gjc /data/app /var/run/sshd && \
-    ln -sf /data/app /app
+# Create default mount points for persistent state.
+RUN mkdir -p /data /data/bin /workspace /root/.gjc /var/run/sshd
 # Default environment configuration
 ENV PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH" \
     EDITOR="nano" \
@@ -83,10 +113,6 @@ ENV PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH" \
     DATABASE_PATH=/data/auth.db \
     WORKSPACES_ROOT=/workspace \
     GJC_WORKER_AGENT_DIR=/root/.gjc/agent \
-    AUTO_UPDATE=true \
-    UPDATE_INTERVAL=0 \
-    UPSTREAM_REPO=devswha/gajae-code-app \
-    VERSION=latest \
     NODE_ENV=production \
     AUTO_UPDATE_PACKAGES=true \
     CHECK_PACKAGE_UPDATES=true \

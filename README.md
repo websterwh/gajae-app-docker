@@ -1,13 +1,13 @@
 # Gajae Code App Docker
 
-Official Docker packaging for **Gajae Code App** (`gajae-app`), featuring **dynamic runtime release pulling, automated in-container self-updates, universal package provisioning (APT/UV/Pip/Aqua), Android ADB auto-connect, and direct SSH CLI access**.
+Docker packaging for **Gajae Code App** (`gajae-app`) built from a pinned revision of the [`websterwh/gajae-code-app`](https://github.com/websterwh/gajae-code-app) source fork. It includes universal package provisioning (APT/UV/Pip/Aqua), Android ADB auto-connect, and direct SSH CLI access.
 
 ---
 
 ## Highlights
 
-- 🚀 **Zero Pre-baked Versions**: The Docker image is a pure, clean runtime environment. Upstream code is downloaded directly on first boot, eliminating rebuild lag.
-- 🔄 **In-Container Auto-Updates**: On startup and periodically in the background, checks GitHub for new Gajae Code releases and performs zero-downtime hot restarts.
+- 🔒 **Reproducible application builds**: The image compiles a specific source commit during `docker compose build`; startup never downloads or modifies application code.
+- 🔀 **Upstream-friendly fork workflow**: Merge `devswha/gajae-code-app` into the source fork, update `APP_REF`, then rebuild the image.
 - 📦 **Universal Addon Package Provisioning**:
   - `APT_PACKAGES`: Comma-separated Debian packages (e.g. `openjdk-17-jre-headless,ffmpeg`).
   - `UV_TOOLS`: Standalone Python CLI tools / MCP servers (e.g. `serena,canvas-mcp-server`).
@@ -35,9 +35,9 @@ Official Docker packaging for **Gajae Code App** (`gajae-app`), featuring **dyna
    # Edit .env to customize packages, SSH, or port mappings
    ```
 
-3. Start the container:
+3. Build and start the container:
    ```bash
-   docker compose up -d
+   docker compose up -d --build
    ```
 
 4. Access the Web UI:
@@ -48,6 +48,24 @@ Official Docker packaging for **Gajae Code App** (`gajae-app`), featuring **dyna
    ```bash
    ssh -p 2222 root@localhost
    ```
+
+---
+
+## Updating the App Fork
+
+The container never applies runtime patches. Application changes belong in
+[`websterwh/gajae-code-app`](https://github.com/websterwh/gajae-code-app), whose
+`upstream` remote is `https://github.com/devswha/gajae-code-app.git`.
+
+```bash
+git fetch upstream
+git merge upstream/main
+git push origin main
+```
+
+Set `APP_REF` to the resulting commit and rebuild with
+`docker compose up -d --build`. Pinning a commit, rather than `main`, makes a
+running image traceable to the exact source it contains.
 
 ---
 
@@ -63,9 +81,8 @@ Official Docker packaging for **Gajae Code App** (`gajae-app`), featuring **dyna
 | `DATABASE_PATH` | `/data/auth.db` | Path to persistent SQLite database. |
 | `WORKSPACES_ROOT` | `/workspace` | Default directory root for GJC agent projects. |
 | `GJC_WORKER_AGENT_DIR` | `/root/.gjc/agent` | Storage directory for agent sessions and custom skills. |
-| `AUTO_UPDATE` | `true` | Check GitHub for new Gajae Code releases on container start. |
-| `UPDATE_INTERVAL` | `0` | Seconds between background app update checks (0 = on startup only; e.g. `21600` for every 6h). |
-| `VERSION` | `latest` | Upstream version tag to target (`latest` or specific tag like `v2.0.0-beta.20`). |
+| `APP_REPOSITORY` | `https://github.com/websterwh/gajae-code-app.git` | Source repository cloned during the image build. Set as a Compose build argument. |
+| `APP_REF` | `5dd9f7fbb4b64df183da491ec785ea35e22e983f` | Immutable source commit built into the image. Set as a Compose build argument. |
 
 ### Universal Package Provisioning
 | Variable | Default | Description |

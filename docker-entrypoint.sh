@@ -11,10 +11,6 @@ export ALLOWED_HOSTS="${ALLOWED_HOSTS:-*}"
 export DATABASE_PATH="${DATABASE_PATH:-/data/auth.db}"
 export WORKSPACES_ROOT="${WORKSPACES_ROOT:-/workspace}"
 export GJC_WORKER_AGENT_DIR="${GJC_WORKER_AGENT_DIR:-/root/.gjc/agent}"
-export AUTO_UPDATE="${AUTO_UPDATE:-true}"
-export UPDATE_INTERVAL="${UPDATE_INTERVAL:-0}"
-export UPSTREAM_REPO="${UPSTREAM_REPO:-devswha/gajae-code-app}"
-export VERSION="${VERSION:-latest}"
 
 # Addon / Package Provisioning Configuration
 export APT_PACKAGES="${APT_PACKAGES:-}"
@@ -44,7 +40,7 @@ export NPM_CONFIG_CACHE="/data/cache/npm"
 # ==============================================================================
 # Directory & Cache Preparation
 # ==============================================================================
-mkdir -p "${DATABASE_PATH%/*}" "${WORKSPACES_ROOT}" "${GJC_WORKER_AGENT_DIR}" /data/logs /data/app /data/share
+mkdir -p "${DATABASE_PATH%/*}" "${WORKSPACES_ROOT}" "${GJC_WORKER_AGENT_DIR}" /data/logs /data/share
 mkdir -p /data/bin /data/cache/apt/archives /data/cache/uv /data/cache/pip /data/cache/aqua /data/cache/npm /data/ssh /data/.installed_hashes
 mkdir -p /root/.ssh /var/run/sshd /var/lib/dbus
 
@@ -55,43 +51,18 @@ if [ ! -f /data/machine-id ]; then
 fi
 cp -f /data/machine-id /etc/machine-id
 cp -f /data/machine-id /var/lib/dbus/machine-id 2>/dev/null || true
-# Ensure /app symlink points to /data/app
-if [ ! -L /app ]; then
-    rm -rf /app
-    ln -s /data/app /app
-fi
-
-# Ensure working directory exists and cd into it so uv_cwd never fails
-cd /data/app
+# The application is immutable image content; only state belongs under /data.
+cd /opt/gajae-app
 # Point apt archive cache to persistent /data/cache/apt/archives
 if [ ! -L /var/cache/apt/archives ]; then
     rm -rf /var/cache/apt/archives
     ln -sf /data/cache/apt/archives /var/cache/apt/archives
 fi
 
-# ==============================================================================
-# Application Installation / Update Check
-# ==============================================================================
-if [ ! -f "/app/dist-server/server/cli.js" ]; then
-    echo "==> [First Run] Gajae Code App not installed. Downloading ${VERSION} from ${UPSTREAM_REPO}..."
-    /usr/local/bin/install-release "${UPSTREAM_REPO}" "${VERSION}" /app
-elif [ "${AUTO_UPDATE}" = "true" ] || [ "${AUTO_UPDATE}" = "1" ]; then
-    echo "==> [Auto-Update] Checking for updates on startup..."
-    /usr/local/bin/install-release "${UPSTREAM_REPO}" "${VERSION}" /app || true
-fi
-
-# Ensure upstream gjc-bun-sdk-adapter recognizes auth: none (credentialless) providers
-if [ -f "/app/dist-server/server/gjc-bun-sdk-adapter.js" ]; then
-    sed -i 's/if (!eligibleProviders.has(provider) && await authStorage.peekApiKey(provider) !== undefined)/if (!eligibleProviders.has(provider) \&\& (modelRegistry.isCredentiallessProvider(provider) || await authStorage.peekApiKey(provider) !== undefined))/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
-    sed -i 's/async function credentialFor(authStorage, credential, model) {/async function credentialFor(authStorage, credential, model, modelRegistry) {/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
-    sed -i 's/const resolvedCredential = await credentialFor(this.authStorage, config.credential, model);/const resolvedCredential = await credentialFor(this.authStorage, config.credential, model, this.modelRegistry);/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
-    sed -i 's/if (await authStorage.peekApiKey(model.provider) === undefined)/if (!modelRegistry?.isCredentiallessProvider(model.provider) \&\& await authStorage.peekApiKey(model.provider) === undefined)/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
-    sed -i 's/if (typeof profileName !== '\''string'\'' || !profileName)/if ((typeof profileName !== '\''string'\'' || !profileName) \&\& availableModels.length > 0) return `${availableModels[0].provider}\/${availableModels[0].id}`;\n    if (typeof profileName !== '\''string'\'' || !profileName)/' /app/dist-server/server/gjc-bun-sdk-adapter.js 2>/dev/null || true
-fi
 # Ensure bun is in PATH if present in dist-native
-if [ -f "/app/dist-native/bun" ] && [ ! -f "/usr/local/bin/bun" ]; then
-    ln -sf /app/dist-native/bun /usr/local/bin/bun
-    chmod +x /usr/local/bin/bun 2>/dev/null || true
+if [ -f "/opt/gajae-app/dist-native/bun" ] && [ ! -f "/usr/local/bin/bun" ]; then
+    ln -sf /opt/gajae-app/dist-native/bun /usr/local/bin/bun
+    chmod +x /opt/gajae-app/dist-native/bun 2>/dev/null || true
 fi
 # ==============================================================================
 # Helper: Comma-separated Parser
@@ -217,8 +188,6 @@ provision_gjc_cli() {
 
     if [ ! -f "$standalone_bin" ]; then
         needs_download="true"
-    elif [ "${AUTO_UPDATE}" = "true" ] || [ "${AUTO_UPDATE}" = "1" ]; then
-        needs_download="true"
     fi
 
     if [ "$needs_download" = "true" ]; then
@@ -252,7 +221,7 @@ fi
 if [ -x "/root/.local/bin/gjc" ]; then
     exec /root/.local/bin/gjc "$@"
 fi
-exec bun /app/node_modules/@gajae-code/coding-agent/bin/gjc.js "$@"
+exec bun /opt/gajae-app/node_modules/@gajae-code/coding-agent/bin/gjc.js "$@"
 EOF
     chmod 0755 /data/bin/gjc
 }
@@ -400,13 +369,12 @@ setup_ssh
 # ==============================================================================
 echo "=========================================================="
 echo " Starting Gajae Code App Container"
-echo " Version        : $(cat /app/.installed_version 2>/dev/null || echo 'unknown')"
+echo " Source Revision: $(cat /opt/gajae-app/.image_revision 2>/dev/null || echo 'unknown')"
 echo " Bind Address   : ${HOST}:${SERVER_PORT}"
 echo " Allowed Hosts  : ${ALLOWED_HOSTS}"
 echo " Unauth Remote  : ${GAJAE_ALLOW_UNAUTH_REMOTE}"
 echo " Database Path  : ${DATABASE_PATH}"
 echo " Workspace Root : ${WORKSPACES_ROOT}"
-echo " Auto Update    : ${AUTO_UPDATE} (Interval: ${UPDATE_INTERVAL}s)"
 if [ "${SSH_ENABLE}" = "true" ] || [ "${SSH_ENABLE}" = "1" ]; then
 echo " SSH Daemon     : Enabled on port ${SSH_PORT}"
 fi
@@ -415,14 +383,14 @@ echo "=========================================================="
 # If running a non-server command (e.g. bash, status, info)
 if [ "$#" -gt 0 ] && [ "$1" != "start" ]; then
     if [ "$1" = "status" ] || [ "$1" = "info" ] || [ "$1" = "version" ]; then
-        exec node /app/dist-server/server/cli.js "$@"
+        exec node /opt/gajae-app/dist-server/server/cli.js "$@"
     else
         exec "$@"
     fi
 fi
 
 # ==============================================================================
-# Process Supervisor & Background Update Loops
+# Process Supervisor
 # ==============================================================================
 SERVER_PID=""
 
@@ -437,37 +405,9 @@ shutdown_handler() {
 
 trap shutdown_handler SIGTERM SIGINT SIGQUIT
 
-# Periodic background combined update loop (App + Addon Packages)
-if [ "${AUTO_UPDATE}" = "true" ] || [ "${AUTO_UPDATE}" = "1" ]; then
-    if [ "${UPDATE_INTERVAL}" -gt 0 ] 2>/dev/null; then
-        echo "==> [Auto-Update] Periodic update check enabled (every ${UPDATE_INTERVAL}s)."
-        (
-            while true; do
-                sleep "${UPDATE_INTERVAL}"
-                echo "==> [Auto-Update] Running scheduled update check..."
-                # Check and update packages
-                provision_apt || true
-                provision_uv_pip || true
-                provision_aqua || true
-
-                # Check and update Gajae Code App
-                OLD_VER="$(cat /app/.installed_version 2>/dev/null || true)"
-                /usr/local/bin/install-release "${UPSTREAM_REPO}" "${VERSION}" /app || true
-                NEW_VER="$(cat /app/.installed_version 2>/dev/null || true)"
-
-                if [ -n "$NEW_VER" ] && [ "$NEW_VER" != "$OLD_VER" ]; then
-                    echo "==> [Auto-Update] Update detected (${OLD_VER} -> ${NEW_VER}). Restarting server process..."
-                    if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
-                        kill -TERM "$SERVER_PID" 2>/dev/null || true
-                    fi
-                fi
-            done
-        ) &
-    fi
-fi
 # Supervisor loop
 while true; do
-    node /app/dist-server/server/cli.js start &
+    node /opt/gajae-app/dist-server/server/cli.js start &
     SERVER_PID=$!
     wait "$SERVER_PID" || true
 
