@@ -27,12 +27,13 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 WORKDIR /src
 RUN git clone "${APP_REPOSITORY}" . && \
     git checkout --detach "${APP_REF}" && \
+    APP_COMMIT="$(git rev-parse HEAD)" && \
     npm ci && \
     node scripts/fetch-bun.mjs && \
     npm run server:bundle && \
     mkdir /opt/gajae-app && \
     tar -xzf release/server/gajae-app-server-*-linux-x64-node22.tar.gz -C /opt/gajae-app && \
-    printf '%s\n' "${APP_REF}" > /opt/gajae-app/.image_revision
+    printf '%s\n' "${APP_COMMIT}" > /opt/gajae-app/.image_revision
 
 FROM node:22-bookworm-slim
 
