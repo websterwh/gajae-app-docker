@@ -1,11 +1,11 @@
 services:
   gajae-app:
-    image: ghcr.io/websterwh/gajae-app-docker:latest
+    image: ghcr.io/websterwh/gajae-app-docker:remote-cua-companion
     build:
       context: .
       args:
         APP_REPOSITORY: ${APP_REPOSITORY:-https://github.com/websterwh/gajae-code-app.git}
-        APP_REF: ${APP_REF:-main}
+        APP_REF: ${APP_REF:-feat/remote-cua-companion}
     container_name: gajae-app
     restart: unless-stopped
     ports:
