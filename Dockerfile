@@ -27,7 +27,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /src
 RUN git clone "${APP_REPOSITORY}" . && \
-    git checkout --detach "${APP_REF}" && \
+    git fetch --depth=1 origin "${APP_REF}" && \
+    git checkout --detach FETCH_HEAD && \
     test -n "${APP_SOURCE_REFRESH}" && \
     APP_COMMIT="$(git rev-parse HEAD)" && \
     npm ci && \
