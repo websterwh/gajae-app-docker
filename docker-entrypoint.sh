@@ -89,13 +89,20 @@ provision_apt() {
     local saved_hash_file="/data/.installed_hashes/apt.hash"
     local previous_hash=""
     [ -f "$saved_hash_file" ] && previous_hash="$(cat "$saved_hash_file")"
+    local pkg_list=()
+    while IFS= read -r pkg; do
+        pkg_list+=("$pkg")
+    done < <(parse_csv "${APT_PACKAGES}")
+    local packages_missing="false"
+    for pkg in "${pkg_list[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -qx 'install ok installed'; then
+            packages_missing="true"
+            break
+        fi
+    done
 
-    if [ "$current_hash" != "$previous_hash" ]; then
-        echo "==> [APT] Package list changed. Provisioning: ${APT_PACKAGES}..."
-        local pkg_list=()
-        while IFS= read -r pkg; do
-            pkg_list+=("$pkg")
-        done < <(parse_csv "${APT_PACKAGES}")
+    if [ "$current_hash" != "$previous_hash" ] || [ "$packages_missing" = "true" ]; then
+        echo "==> [APT] Provisioning: ${APT_PACKAGES}..."
 
         if [ ${#pkg_list[@]} -gt 0 ]; then
             DEBIAN_FRONTEND=noninteractive apt-get update -qq
