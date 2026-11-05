@@ -365,13 +365,27 @@ EOF
 }
 
 # ==============================================================================
-# Run All Startup Provisioners
+# Run Startup Provisioners
 # ==============================================================================
-provision_apt
-provision_uv_pip
-provision_aqua
-provision_gjc_cli
-run_post_commands
+# The web application must be available promptly. Optional packages and tools
+# can finish installing after the server begins accepting connections; required
+# audio transcoding is baked into the image instead.
+if [ "$#" -gt 0 ] && [ "$1" = "start" ]; then
+    echo "==> [Provisioning] Optional packages continue in the background."
+    (
+        provision_apt
+        provision_uv_pip
+        provision_aqua
+        provision_gjc_cli
+        run_post_commands
+    ) &
+else
+    provision_apt
+    provision_uv_pip
+    provision_aqua
+    provision_gjc_cli
+    run_post_commands
+fi
 setup_ssh
 
 # ==============================================================================

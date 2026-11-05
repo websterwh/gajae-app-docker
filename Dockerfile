@@ -63,6 +63,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gzip \
     unzip \
     jq \
+    ffmpeg \
     openssh-server \
     libnss3 \
     libatk1.0-0 \
