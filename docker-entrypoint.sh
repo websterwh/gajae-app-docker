@@ -105,6 +105,9 @@ provision_apt() {
         echo "==> [APT] Provisioning: ${APT_PACKAGES}..."
 
         if [ ${#pkg_list[@]} -gt 0 ]; then
+            # A container may have been stopped during a previous install.
+            # Complete any unpacked packages before invoking apt again.
+            DEBIAN_FRONTEND=noninteractive dpkg --configure -a
             DEBIAN_FRONTEND=noninteractive apt-get update -qq
             DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends "${pkg_list[@]}" >/dev/null
         fi
