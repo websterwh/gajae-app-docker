@@ -85,6 +85,7 @@ revision is required.
 | `SERVER_PORT` | `3001` | Port the internal WebUI server listens on. |
 | `GAJAE_ALLOW_UNAUTH_REMOTE` | `1` | Permits binding to `0.0.0.0` across network interfaces. |
 | `ALLOWED_HOSTS` | `*` | Admitted hostnames/origins (`*` allows all, or enter comma-separated domains). |
+| `GAJAE_TRUST_PROXY_TLS` | unset | Set to `1` only when a reverse proxy in front of this container terminates TLS itself, so the Remote CUA companion's `wss://` upgrade is accepted via `X-Forwarded-Proto`. |
 | `DATABASE_PATH` | `/data/auth.db` | Path to persistent SQLite database. |
 | `WORKSPACES_ROOT` | `/workspace` | Default directory root for GJC agent projects. |
 | `GJC_WORKER_AGENT_DIR` | `/root/.gjc/agent` | Storage directory for agent sessions and custom skills. |
