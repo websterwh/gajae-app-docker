@@ -408,6 +408,25 @@ echo " SSH Daemon     : Enabled on port ${SSH_PORT}"
 fi
 echo "=========================================================="
 
+# ==============================================================================
+# Image Update Check (informational only: this image's app source is baked in
+# at build time, so an update means rebuilding/pulling a new image, not an
+# in-place file change. See provision_gjc_cli for the one component that can
+# still self-update.)
+# ==============================================================================
+if { [ "${AUTO_UPDATE_PACKAGES}" = "true" ] || [ "${AUTO_UPDATE_PACKAGES}" = "1" ]; } && [ -f /opt/gajae-app/.image_repository ] && [ -f /opt/gajae-app/.image_ref ]; then
+    IMAGE_REPO="$(cat /opt/gajae-app/.image_repository)"
+    IMAGE_REF="$(cat /opt/gajae-app/.image_ref)"
+    IMAGE_COMMIT="$(cat /opt/gajae-app/.image_revision 2>/dev/null || true)"
+    IMAGE_OWNER_REPO="$(echo "$IMAGE_REPO" | sed -E 's#^https://github.com/##')"
+    LATEST_COMMIT="$(curl -fsSL -H "User-Agent: GJC-Installer" "https://api.github.com/repos/${IMAGE_OWNER_REPO}/commits/${IMAGE_REF}" 2>/dev/null | jq -r '.sha // empty' 2>/dev/null || true)"
+    if [ -n "$LATEST_COMMIT" ] && [ -n "$IMAGE_COMMIT" ] && [ "$LATEST_COMMIT" != "$IMAGE_COMMIT" ]; then
+        echo "==> [Image Update] A newer ${IMAGE_REF} commit is available upstream (this image: ${IMAGE_COMMIT:0:12}, latest: ${LATEST_COMMIT:0:12})."
+        echo "==> [Image Update] Rebuild/pull the Docker image to update; app source is baked in and cannot update in place."
+        echo "=========================================================="
+    fi
+fi
+
 # If running a non-server command (e.g. bash, status, info)
 if [ "$#" -gt 0 ] && [ "$1" != "start" ]; then
     if [ "$1" = "status" ] || [ "$1" = "info" ] || [ "$1" = "version" ]; then
