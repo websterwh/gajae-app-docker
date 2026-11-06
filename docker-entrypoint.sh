@@ -11,6 +11,10 @@ export ALLOWED_HOSTS="${ALLOWED_HOSTS:-*}"
 export DATABASE_PATH="${DATABASE_PATH:-/data/auth.db}"
 export WORKSPACES_ROOT="${WORKSPACES_ROOT:-/workspace}"
 export GJC_WORKER_AGENT_DIR="${GJC_WORKER_AGENT_DIR:-/root/.gjc/agent}"
+# Baked into the image at build time from APP_REPOSITORY (see Dockerfile), so
+# the Settings "Download companion" button works out of the box for every
+# fork's image without a separately configured env var.
+export GAJAE_COMPANION_DOWNLOAD_TEMPLATE="${GAJAE_COMPANION_DOWNLOAD_TEMPLATE:-$(cat /opt/gajae-app/.companion_download_template 2>/dev/null || true)}"
 
 # Addon / Package Provisioning Configuration
 export APT_PACKAGES="${APT_PACKAGES:-}"

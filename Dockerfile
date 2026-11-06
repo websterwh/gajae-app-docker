@@ -36,7 +36,9 @@ RUN git clone "${APP_REPOSITORY}" . && \
     npm run server:bundle && \
     mkdir /opt/gajae-app && \
     tar -xzf release/server/gajae-app-server-*-linux-x64-node22.tar.gz -C /opt/gajae-app && \
-    printf '%s\n' "${APP_COMMIT}" > /opt/gajae-app/.image_revision
+    printf '%s\n' "${APP_COMMIT}" > /opt/gajae-app/.image_revision && \
+    APP_REPOSITORY_WEB="${APP_REPOSITORY%.git}" && \
+    printf '%s\n' "${APP_REPOSITORY_WEB}/releases/latest/download/gajae-cua-companion-{platform}" > /opt/gajae-app/.companion_download_template
 
 FROM node:22-bookworm-slim
 
@@ -100,7 +102,9 @@ WORKDIR /opt/gajae-app
 COPY scripts/install-github-app.py /usr/local/bin/install-github-app
 RUN chmod +x /usr/local/bin/install-github-app
 
-# Copy the application built from the selected fork revision.
+# Copy the application built from the selected fork revision. The companion
+# download template is derived at build time from APP_REPOSITORY, so every
+# fork's image points at its own GitHub Releases without manual configuration.
 COPY --from=app-build /opt/gajae-app /opt/gajae-app
 
 # Install global CLI wrapper for convenience.
@@ -129,6 +133,7 @@ ENV PATH="/data/bin:/root/.local/share/aquaproj-aqua/bin:/usr/local/bin:$PATH" \
     AUTO_UPDATE_PACKAGES=true \
     CHECK_PACKAGE_UPDATES=true \
     POST_COMMANDS="" \
+    GAJAE_COMPANION_DOWNLOAD_TEMPLATE="" \
     INSTALL_GJC_CLI=true \
     SSH_ENABLE=false \
     SSH_PORT=2222 \
