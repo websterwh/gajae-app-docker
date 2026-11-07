@@ -7,6 +7,11 @@ set -e
 export HOST="${HOST:-0.0.0.0}"
 export SERVER_PORT="${SERVER_PORT:-3001}"
 export GAJAE_ALLOW_UNAUTH_REMOTE="${GAJAE_ALLOW_UNAUTH_REMOTE:-1}"
+# This container is never a native macOS desktop, so computer-use's platform
+# check is off by default; this override turns the capability back on so a
+# paired remote CUA companion can be selected and used. The "Computer use"
+# toggle in Settings > Automation and device pairing/selection still gate it.
+export GAJAE_AUTOMATION="${GAJAE_AUTOMATION:-1}"
 export ALLOWED_HOSTS="${ALLOWED_HOSTS:-*}"
 export DATABASE_PATH="${DATABASE_PATH:-/data/auth.db}"
 export WORKSPACES_ROOT="${WORKSPACES_ROOT:-/workspace}"
@@ -401,6 +406,7 @@ echo " Source Revision: $(cat /opt/gajae-app/.image_revision 2>/dev/null || echo
 echo " Bind Address   : ${HOST}:${SERVER_PORT}"
 echo " Allowed Hosts  : ${ALLOWED_HOSTS}"
 echo " Unauth Remote  : ${GAJAE_ALLOW_UNAUTH_REMOTE}"
+echo " Computer Use   : ${GAJAE_AUTOMATION}"
 echo " Database Path  : ${DATABASE_PATH}"
 echo " Workspace Root : ${WORKSPACES_ROOT}"
 if [ "${SSH_ENABLE}" = "true" ] || [ "${SSH_ENABLE}" = "1" ]; then
