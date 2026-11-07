@@ -70,10 +70,10 @@ fi
 # so without this they live on the container's root filesystem and are wiped
 # on every recreate even though auth.db (which only has the session *rows*,
 # not their content) survives in /data - sessions reappear with nothing in
-# them. Redirect both onto /data, the one bind-mounted persistent volume,
-# the same way apt's cache is redirected above. Existing content is migrated
-# in rather than clobbered, so a volume that already has one from before
-# this fix keeps it.
+# them. Redirect both onto /data, the one bind-mounted persistent volume, the
+# same way apt's cache is redirected above. No migration: any content that
+# was living unmounted on the container's writable layer is discarded here,
+# not copied forward.
 for mapping in "/root/.gajae-app:/data/gajae-app" "/root/.claude:/data/claude"; do
     target="${mapping%%:*}"
     persisted="${mapping##*:}"
@@ -81,10 +81,7 @@ for mapping in "/root/.gajae-app:/data/gajae-app" "/root/.claude:/data/claude"; 
     if [ -L "${target}" ]; then
         continue
     fi
-    if [ -d "${target}" ]; then
-        cp -a "${target}/." "${persisted}/" 2>/dev/null || true
-        rm -rf "${target}"
-    fi
+    rm -rf "${target}"
     ln -sf "${persisted}" "${target}"
 done
 
