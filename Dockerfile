@@ -38,7 +38,7 @@ RUN git clone "${APP_REPOSITORY}" . && \
     tar -xzf release/server/gajae-app-server-*-linux-x64-node22.tar.gz -C /opt/gajae-app && \
     printf '%s\n' "${APP_COMMIT}" > /opt/gajae-app/.image_revision && \
     APP_REPOSITORY_WEB="${APP_REPOSITORY%.git}" && \
-    printf '%s\n' "${APP_REPOSITORY_WEB}/releases/latest/download/gajae-cua-companion-{platform}" > /opt/gajae-app/.companion_download_template && \
+    printf '%s\n' "${APP_REPOSITORY_WEB}/releases/latest/download/gajae-agent-desktop-companion-{platform}" > /opt/gajae-app/.companion_download_template && \
     printf '%s\n' "${APP_REPOSITORY_WEB}" > /opt/gajae-app/.image_repository && \
     printf '%s\n' "${APP_REF}" > /opt/gajae-app/.image_ref
 
