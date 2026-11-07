@@ -2,7 +2,7 @@ name: Build and Publish Docker Image
 
 on:
   push:
-    branches: [ "main", "feat/remote-cua-companion" ]
+    branches: [ "main", "feat/remote-cua-companion", "feat/agent-desktop-companion" ]
   workflow_dispatch:
 
 env:
@@ -38,6 +38,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=remote-cua-companion,enable=${{ github.ref == 'refs/heads/feat/remote-cua-companion' }}
+            type=raw,value=agent-desktop-companion,enable=${{ github.ref == 'refs/heads/feat/agent-desktop-companion' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -48,6 +49,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             APP_SOURCE_REFRESH=${{ github.run_id }}-${{ github.run_attempt }}
-            APP_REF=${{ github.ref == 'refs/heads/feat/remote-cua-companion' && 'feat/remote-cua-companion' || 'main' }}
+            APP_REF=${{ github.ref == 'refs/heads/feat/agent-desktop-companion' && 'feat/agent-desktop-companion' || (github.ref == 'refs/heads/feat/remote-cua-companion' && 'feat/remote-cua-companion' || 'main') }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
