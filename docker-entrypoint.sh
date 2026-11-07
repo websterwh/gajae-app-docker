@@ -63,6 +63,31 @@ if [ ! -L /var/cache/apt/archives ]; then
     ln -sf /data/cache/apt/archives /var/cache/apt/archives
 fi
 
+# ~/.gajae-app holds the live GJC session transcripts the chat view reads
+# (gjc-live-sessions), chat image assets, the local-server marker, and
+# per-provider model memory; ~/.claude/projects holds Claude provider
+# transcripts the same way. Neither is under DATABASE_PATH or WORKSPACES_ROOT,
+# so without this they live on the container's root filesystem and are wiped
+# on every recreate even though auth.db (which only has the session *rows*,
+# not their content) survives in /data - sessions reappear with nothing in
+# them. Redirect both onto /data, the one bind-mounted persistent volume,
+# the same way apt's cache is redirected above. Existing content is migrated
+# in rather than clobbered, so a volume that already has one from before
+# this fix keeps it.
+for mapping in "/root/.gajae-app:/data/gajae-app" "/root/.claude:/data/claude"; do
+    target="${mapping%%:*}"
+    persisted="${mapping##*:}"
+    mkdir -p "${persisted}"
+    if [ -L "${target}" ]; then
+        continue
+    fi
+    if [ -d "${target}" ]; then
+        cp -a "${target}/." "${persisted}/" 2>/dev/null || true
+        rm -rf "${target}"
+    fi
+    ln -sf "${persisted}" "${target}"
+done
+
 # Ensure bun is in PATH if present in dist-native
 if [ -f "/opt/gajae-app/dist-native/bun" ] && [ ! -f "/usr/local/bin/bun" ]; then
     ln -sf /opt/gajae-app/dist-native/bun /usr/local/bin/bun

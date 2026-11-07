@@ -120,7 +120,7 @@ revision is required.
 
 | Container Path | Host Path (Compose) | Purpose |
 |---|---|---|
-| `/data` | `./data` | Persistent SQLite database (`auth.db`), logs, caches (`apt`, `uv`, `pip`, `aqua`, `npm`), host SSH keys, and installed CLI binaries (`/data/bin`). |
+| `/data` | `./data` | Persistent SQLite database (`auth.db`), logs, caches (`apt`, `uv`, `pip`, `aqua`, `npm`), host SSH keys, installed CLI binaries (`/data/bin`), and (via entrypoint-created symlinks) `~/.gajae-app` and `~/.claude` - chat transcripts and images, which `auth.db` only indexes by path and does not itself contain. |
 | `/workspace` | `./workspace` | Projects directory where the coding agent inspects and edits code. |
 | `/root/.gjc` | `./gjc-config` | Agent configurations, credentials, and custom skills. |
 
