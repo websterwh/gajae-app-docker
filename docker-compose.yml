@@ -17,14 +17,6 @@ services:
       - SERVER_PORT=3001
       - GAJAE_ALLOW_UNAUTH_REMOTE=1
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
-      # The container itself is never a native macOS desktop, so computer-use
-      # is off by default on this platform check alone. This override turns
-      # the capability back on so a paired remote CUA companion (a real
-      # desktop machine running the companion CLI) can be selected and used
-      # from here. It does not grant anything on its own: Settings > Automation
-      # > "Computer use" must still be turned on, and a device must be paired
-      # and selected as the computer target.
-      - GAJAE_AUTOMATION=${GAJAE_AUTOMATION:-1}
       # Set to 1 only when a reverse proxy (nginx, godoxy, Caddy, etc.) in
       # front of this container terminates TLS itself; it lets the Remote CUA
       # companion connect over the proxy's X-Forwarded-Proto header instead of
