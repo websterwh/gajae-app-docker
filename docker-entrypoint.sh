@@ -67,22 +67,22 @@ fi
 # (gjc-live-sessions), chat image assets, the local-server marker, and
 # per-provider model memory; ~/.claude/projects holds Claude provider
 # transcripts the same way. Neither is under DATABASE_PATH or WORKSPACES_ROOT,
-# so without this they live on the container's root filesystem and are wiped
+# so without this they live on the container's writable layer and are wiped
 # on every recreate even though auth.db (which only has the session *rows*,
 # not their content) survives in /data - sessions reappear with nothing in
-# them. Redirect both onto /data, the one bind-mounted persistent volume, the
-# same way apt's cache is redirected above. No migration: any content that
-# was living unmounted on the container's writable layer is discarded here,
-# not copied forward.
+# them. Redirect both onto /data, the one bind-mounted persistent volume.
+# No migration and no deletion here: on a fresh container neither path exists
+# yet, so the symlink is created directly; if one is already a symlink from a
+# prior boot of this same persistent volume, it is left alone. This never
+# touches an existing real directory, so there is nothing destructive to run
+# even if something unexpected is already there.
 for mapping in "/root/.gajae-app:/data/gajae-app" "/root/.claude:/data/claude"; do
     target="${mapping%%:*}"
     persisted="${mapping##*:}"
     mkdir -p "${persisted}"
-    if [ -L "${target}" ]; then
-        continue
+    if [ ! -e "${target}" ] || [ -L "${target}" ]; then
+        ln -sfn "${persisted}" "${target}"
     fi
-    rm -rf "${target}"
-    ln -sf "${persisted}" "${target}"
 done
 
 # Ensure bun is in PATH if present in dist-native
